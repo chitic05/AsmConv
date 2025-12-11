@@ -1,0 +1,4 @@
+# ninja log v5
+4	24	0	/home/david/Altele/Proiecte/cpp/AsmConv/build/CMakeFiles/cmake.verify_globs	8a2c5a8ec224726c
+24	560	1765474581032277342	CMakeFiles/AsmConv.dir/src/main.cpp.o	d0002f061b2cdc94
+562	780	1765474581243434848	AsmConv	8f7ecb02b7c33bb6

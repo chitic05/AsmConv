@@ -1,0 +1,3 @@
+/home/david/Altele/Proiecte/cpp/AsmConv/build/CMakeFiles/AsmConv.dir
+/home/david/Altele/Proiecte/cpp/AsmConv/build/CMakeFiles/edit_cache.dir
+/home/david/Altele/Proiecte/cpp/AsmConv/build/CMakeFiles/rebuild_cache.dir
