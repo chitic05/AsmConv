@@ -15,7 +15,8 @@
 					"source" : ".",
 					"targetIndexes" : 
 					[
-						0
+						0,
+						1
 					]
 				}
 			],
@@ -30,7 +31,8 @@
 					"name" : "AsmConv",
 					"targetIndexes" : 
 					[
-						0
+						0,
+						1
 					]
 				}
 			],
@@ -41,6 +43,13 @@
 					"id" : "AsmConv::@6890427a1f51a3e7e1df",
 					"jsonFile" : "target-AsmConv-Debug-7db33d1c78d790ed505b.json",
 					"name" : "AsmConv",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "copy_resources::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-copy_resources-Debug-bbafd2a7a0973949204b.json",
+					"name" : "copy_resources",
 					"projectIndex" : 0
 				}
 			]
