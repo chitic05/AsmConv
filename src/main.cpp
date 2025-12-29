@@ -7,6 +7,7 @@
 #include <bitset>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #ifndef MEMSIZE
     #define MEMSIZE 1048576 //1024*1024 = 1MB
@@ -24,10 +25,13 @@ uint32_t generateMask(uint8_t size){
         return mask;
     }
 
-uint8_t memory[1024*1024];
+namespace Mem{
+    uint8_t memory[1024*1024];
+    std::unordered_map<std::string, uint32_t> labels;
+}
 
 namespace Registers{
-    int32_t eax=0x00000110, ebx, ecx, edx, esi, edi, esp=MEMSIZE, ebp;
+    int32_t eax, ebx, ecx, edx, esi, edi, esp=MEMSIZE, ebp;
 
     enum Reg{
         EAX, AX, AH, AL,
@@ -115,12 +119,12 @@ namespace Operands{
             }
             case OperandType::ADDRESS:{
                 uint32_t value = 0;
-                for(uint8_t i = 0; i<op.size;i++){
-                    value |= (uint32_t)memory[op.address + i] << (8 * (op.size - 1 - i));
+                for (uint8_t i = 0; i < op.size; i++) {
+                    value |= static_cast<uint32_t>(Mem::memory[op.address + i]) << (8 * i);
                 }
 
                 if(op.size == 1) return (int32_t)(int8_t)value;
-                else if(op.size == 2) return (int32_t)(int16_t)value; // now works for negative numbers
+                else if(op.size == 2) return (int32_t)(int16_t)value; // fixed negative number problems
                 return (int32_t) value;
                 break;
             }
@@ -137,21 +141,53 @@ namespace Operands{
         return 0;
 
     }
-    //SA FAC WRITE IN MEMORIE
     void writeOperand(const Operand& op, int32_t value){
         switch(op.type){
             case OperandType::REGISTER:{
                 Registers::RegDef registerData = Registers::regData[op.regTag];
-                *registerData.base_register = value;
+                uint32_t mask = generateMask(registerData.size) << registerData.offset;
+
+                *registerData.base_register =
+                    (*registerData.base_register & ~mask) |
+                    ((static_cast<uint32_t>(value) << registerData.offset) & mask);
                 break;
             }
             case OperandType::ADDRESS:{
+                uint32_t v = static_cast<uint32_t>(value);
+                for(uint8_t i=0; i<op.size;i++){
+                    uint8_t byte = static_cast<uint8_t>(v & 0xFF);
+                    Mem::memory[op.address+i] = byte;
+                    v >>= 8;
+                }
                 break;
             }
         }
     }
     
 }
+
+namespace Instr{
+    enum class Type{
+        MOV,
+        ADD,
+        SUB,
+        MUL,
+        DIV,
+        JMP,
+        CALL
+    };
+
+    struct Instruction{
+        Type type;
+        
+        Operands::Operand src;
+        Operands::Operand dest;
+    };
+
+    std::vector<Instruction> instructions;
+
+}
+
 int main(int argc, char* argv[]){
 
     // if(!fs::exists("asmOut")) {
@@ -197,9 +233,19 @@ int main(int argc, char* argv[]){
     // }
 
     Operands::Operand eaxx = {
-        .type=Operands::OperandType::REGISTER,
-        .regTag = Registers::Reg::AX
+        .type=Operands::OperandType::ADDRESS,
+        .size=4,
+        .address=0
     };
-    std::cout << std::bitset<32>(Operands::readOperand(eaxx)) << std::endl;
+
+   
+    Operands::writeOperand(eaxx, 0x0101);
+     eaxx={
+        .type=Operands::OperandType::ADDRESS,
+        .size=4,
+        .address=1
+    };
+    int32_t value = Operands::readOperand(eaxx);
+    std::cout << std::bitset<32>(value) << std::endl;
     return 0;
 }
