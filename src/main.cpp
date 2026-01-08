@@ -35,7 +35,7 @@ namespace Mem{
 }
 
 namespace Registers{
-    int32_t eax, ebx, ecx, edx, esi, edi, esp=MEMSIZE, ebp;
+    int32_t eax=10, ebx, ecx, edx, esi, edi, esp=MEMSIZE, ebp;
 
     enum Reg{
         EAX, AX, AH, AL,
@@ -197,6 +197,7 @@ int main(int argc, char* argv[]){
     if(!fs::exists("asmOut")) {
         fs::create_directory("asmOut");
     }
+
     if(argc > 1){
         for(size_t i = 1; i<argc; i++){
             std::string inputFile = "./asmFiles/";
@@ -214,7 +215,7 @@ int main(int argc, char* argv[]){
                 std::cerr << "Problems creating the output file( " << argv[i] << " )";
                 continue;
             }
-            
+
             enum Sections{
                 DATA,
                 TEXT
@@ -225,16 +226,19 @@ int main(int argc, char* argv[]){
                 if(line != ""){
                     if(line == ".data"){
                         section = DATA;
+                        out << line << '\n';
                         continue;
                     }
                     
                     if(line== ".text"){
                         section = TEXT;
+                        out << line << '\n';
                         continue;
                     }
                         
 
                     if(section == DATA){
+                        out << line << '\n';
                         std::replace(line.begin(), line.end(), ',', ' ');
                         std::istringstream lineWords(line); // face un input string stream din linie 
 
@@ -263,9 +267,6 @@ int main(int argc, char* argv[]){
                         std::cout << Mem::labels[labelName].address << '\n';
                         lineWords >> value;
                         if (value.front() == '"') {
-                            // It's a string (e.g., .ascii "Hello")
-                            // Note: operator >> only gets one word. For strings with spaces, 
-                            // you might need std::getline(lineWords, value, '"') instead.
                             std::string temp;
                             while(lineWords >> temp){
                                 value += " "+temp;
@@ -296,10 +297,9 @@ int main(int argc, char* argv[]){
                                     v = static_cast<int32_t>(value[1]);
                                 } 
                                 else {
-                                    // It's likely a number (Decimal or Hex)
                                     try {
                                         // Using base 0 lets stoul detect 0x for hex automatically
-                                        v = std::stoul(value, nullptr, 0);
+                                        v = static_cast<int32_t>(std::stoul(value, nullptr, 0));
                                     } catch (...) {
                                         std::cerr << "Error: Could not parse value: " << value << std::endl;
                                         continue;
@@ -315,24 +315,58 @@ int main(int argc, char* argv[]){
                                 Mem::memoryPeak += size;
                             }while(lineWords >> value);
                         }
-                            
-                                // Operands::Operand current = {
-                                //     .type = Operands::OperandType::ADDRESS,
-                                //     .size = size,
-                                //     .address = address + counter*size
-                                // };
-                                // Operands::writeOperand(current, v);
-                                // counter++;
-                        
-                                                
+                                                      
                     }    
+                    if(section == TEXT){
+                        std::replace(line.begin(), line.end(), ',', ' ');
+                        std::istringstream lineWords(line);
+                        std::string instruction;
+                        lineWords >> instruction;
+
+                        if(instruction == "add"){
+                            std::string src, dest;
+                            Operands::Operand op_s, op_d;
+                            int32_t val_s, val_d;
+                            lineWords >> src >> dest;
+                            if(src[0] == '$'){
+                                std::string l =  src.substr(1, src.length()-1);
+                                val_s = static_cast<int32_t>(std::stoul(l, nullptr, 0));
+                            }else if(src[0] == '%'){
+                                op_s = {.type=Operands::OperandType::REGISTER, .regTag=Registers::stringToTag[src]};
+                                val_s = Operands::readOperand(op_s);
+                            }else{
+                                op_s = {.type=Operands::OperandType::ADDRESS, 
+                                        .size=Mem::labels[src].size,
+                                        .address=Mem::labels[src].address};
+                                val_s = Operands::readOperand(op_s);
+                            }
+
+                            if(dest[0] == '$'){
+                                std::string l =  dest.substr(1, dest.length()-1);
+                                val_d = static_cast<int32_t>(std::stoul(l, nullptr, 0));
+                            }else if(dest[0] == '%'){
+                                op_d = {.type=Operands::OperandType::REGISTER, .regTag=Registers::stringToTag[dest]};
+                                val_d = Operands::readOperand(op_d);
+                            }else{
+                                op_d = {.type=Operands::OperandType::ADDRESS, 
+                                        .size=Mem::labels[dest].size,
+                                        .address=Mem::labels[dest].address};
+                                val_d = Operands::readOperand(op_d);
+                            }
+                            int32_t sum = val_s + val_d;
+
+                            Operands::writeOperand(op_d, sum);
+                            out << "mov" << " $" << sum << ", " << dest << '\n';
+                        }
+
+                    }
                 }
                 
             }
-            for(uint i = Mem::labels["ch"].address; i<Mem::memoryPeak;i+=Mem::labels["ch"].size){
-                int32_t v = Operands::readOperand({.type=Operands::OperandType::ADDRESS, .size=1,.address=i});
-                std::cout << v;
-            }
+            // for(uint i = Mem::labels["ch"].address; i<Mem::memoryPeak;i+=Mem::labels["ch"].size){
+            //     int32_t v = Operands::readOperand({.type=Operands::OperandType::ADDRESS, .size=1,.address=i});
+            //     std::cout << v;
+            // }
             in.close();
             out.close();
         }        

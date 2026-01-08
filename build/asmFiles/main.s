@@ -1,10 +1,10 @@
 .data
-    ch: .long 32, 100, 41
+    x: .long 0b00000001, 100, 41
+    y: .long 10
 .text
 
 .global main
 
 main:
-    mov $1, %eax
-    mov $0, %ebx
-    int $0x80
+    add x, x
+    add x, %ebx
