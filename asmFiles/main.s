@@ -1,7 +1,5 @@
 .data
-
-    x: .long 42
-    ch: .byte 'a'
+    ch: .long 32, 100, 41
 .text
 
 .global main
