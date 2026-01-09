@@ -11,10 +11,11 @@
 #include <algorithm>
 
 #ifndef MEMSIZE
-    #define MEMSIZE 1048576 //1024*1024 = 1MB
+    #define MEMSIZE 1048576 //1024*1024 = 1MiB
 #endif
 
 namespace fs = std::filesystem;
+
 
 uint32_t generateMask(uint8_t size){
         uint32_t mask = 0b0;
@@ -35,7 +36,7 @@ namespace Mem{
 }
 
 namespace Registers{
-    int32_t eax=10, ebx, ecx, edx, esi, edi, esp=MEMSIZE, ebp;
+    int32_t eax=0, ebx=0, ecx=0, edx=0, esi=0, edi=0, esp=MEMSIZE, ebp;
 
     enum Reg{
         EAX, AX, AH, AL,
@@ -170,6 +171,8 @@ namespace Operands{
     
 }
 
+Operands::Operand getOperandFromString(std::string str, uint8_t size);
+
 namespace Instr{
     enum class Type{
         MOV,
@@ -190,6 +193,39 @@ namespace Instr{
 
     std::vector<Instruction> instructions;
 
+    void add(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string src, dest;
+        Operands::Operand op_s, op_d;
+        int32_t val_s, val_d;
+        lineWords >> src >> dest;
+
+        op_s = getOperandFromString(src, size);
+        op_d = getOperandFromString(dest, size);
+
+        val_s = Operands::readOperand(op_s);
+        val_d = Operands::readOperand(op_d);
+
+        int32_t sum = val_s + val_d;
+        Operands::writeOperand(op_d, sum);
+        out << "mov" << " $" << sum << ", " << dest << '\n';
+    }
+
+    void sub(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string src, dest;
+        Operands::Operand op_s, op_d;
+        int32_t val_s, val_d;
+        lineWords >> src >> dest;
+
+        op_s = getOperandFromString(src, size);
+        op_d = getOperandFromString(dest, size);
+
+        val_s = Operands::readOperand(op_s);
+        val_d = Operands::readOperand(op_d);cd
+
+        int32_t sub = val_d - val_s;
+        Operands::writeOperand(op_d, sub);
+        out << "mov" << " $" << sub << ", " << dest << '\n';
+    }
 }
 
 int main(int argc, char* argv[]){
@@ -323,41 +359,24 @@ int main(int argc, char* argv[]){
                         std::string instruction;
                         lineWords >> instruction;
 
-                        if(instruction == "add"){
-                            std::string src, dest;
-                            Operands::Operand op_s, op_d;
-                            int32_t val_s, val_d;
-                            lineWords >> src >> dest;
-                            if(src[0] == '$'){
-                                std::string l =  src.substr(1, src.length()-1);
-                                val_s = static_cast<int32_t>(std::stoul(l, nullptr, 0));
-                            }else if(src[0] == '%'){
-                                op_s = {.type=Operands::OperandType::REGISTER, .regTag=Registers::stringToTag[src]};
-                                val_s = Operands::readOperand(op_s);
-                            }else{
-                                op_s = {.type=Operands::OperandType::ADDRESS, 
-                                        .size=Mem::labels[src].size,
-                                        .address=Mem::labels[src].address};
-                                val_s = Operands::readOperand(op_s);
-                            }
+                        if(instruction == "add")
+                            Instr::add(lineWords, out, 4);
+                        else if(instruction == "addl")
+                            Instr::add(lineWords, out, 4);
+                        else if(instruction == "addw")
+                            Instr::add(lineWords, out, 2);
+                        else if(instruction == "addb")
+                            Instr::add(lineWords, out, 1);
+                        /*-------------------------------*/
+                        else if(instruction == "sub")
+                            Instr::sub(lineWords, out, 4);
+                        else if(instruction == "subl")
+                            Instr::sub(lineWords, out, 4);
+                        else if(instruction == "subw")
+                            Instr::sub(lineWords, out, 2);
+                        else if(instruction == "subb")
+                            Instr::sub(lineWords, out, 1);
 
-                            if(dest[0] == '$'){
-                                std::string l =  dest.substr(1, dest.length()-1);
-                                val_d = static_cast<int32_t>(std::stoul(l, nullptr, 0));
-                            }else if(dest[0] == '%'){
-                                op_d = {.type=Operands::OperandType::REGISTER, .regTag=Registers::stringToTag[dest]};
-                                val_d = Operands::readOperand(op_d);
-                            }else{
-                                op_d = {.type=Operands::OperandType::ADDRESS, 
-                                        .size=Mem::labels[dest].size,
-                                        .address=Mem::labels[dest].address};
-                                val_d = Operands::readOperand(op_d);
-                            }
-                            int32_t sum = val_s + val_d;
-
-                            Operands::writeOperand(op_d, sum);
-                            out << "mov" << " $" << sum << ", " << dest << '\n';
-                        }
 
                     }
                 }
@@ -391,4 +410,18 @@ int main(int argc, char* argv[]){
     // int32_t value = Operands::readOperand(eaxx);
     // std::cout << std::bitset<32>(value) << std::endl;
     return 0;
+}
+
+Operands::Operand getOperandFromString(std::string str, uint8_t size){
+    if(str[0] == '$'){
+        std::string l =  str.substr(1, str.length()-1);
+        return {.type=Operands::OperandType::IMMEDIATE, .imm=static_cast<int32_t>(std::stoul(l, nullptr, 0))};
+    }else if(str[0] == '%'){
+        return {.type=Operands::OperandType::REGISTER, .regTag=Registers::stringToTag[str]};
+    }else{
+        return {.type=Operands::OperandType::ADDRESS, 
+                .size=size,
+                .address=Mem::labels[str].address};
+    }
+    std::cerr << "Nu exista acest tip: " + str; 
 }
