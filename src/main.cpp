@@ -220,7 +220,7 @@ namespace Instr{
         op_d = getOperandFromString(dest, size);
 
         val_s = Operands::readOperand(op_s);
-        val_d = Operands::readOperand(op_d);cd
+        val_d = Operands::readOperand(op_d);
 
         int32_t sub = val_d - val_s;
         Operands::writeOperand(op_d, sub);
