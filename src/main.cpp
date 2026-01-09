@@ -226,6 +226,95 @@ namespace Instr{
         Operands::writeOperand(op_d, sub);
         out << "mov" << " $" << sub << ", " << dest << '\n';
     }
+    void div(std::istringstream& lineWords, std::ofstream& out){
+        std::string src, dest;
+        Operands::Operand op_s, eax, edx;
+        int32_t val_s;
+        int64_t edx_eax;
+        lineWords >> src;
+
+        op_s = getOperandFromString(src, 4);
+        val_s = Operands::readOperand(op_s);
+        
+        edx = {
+            .type=Operands::OperandType::REGISTER,
+            .regTag=Registers::EDX
+        };
+        eax = {
+            .type=Operands::OperandType::REGISTER,
+            .regTag=Registers::EAX
+        };
+
+        edx_eax = ((uint64_t)Operands::readOperand(edx)<<32) | (uint32_t)Operands::readOperand(eax);
+        uint32_t rest, cat;
+        cat = (uint32_t)(edx_eax / val_s);
+        rest = (uint32_t)(edx_eax % val_s);
+        Operands::writeOperand(eax, cat);
+        Operands::writeOperand(edx, rest);
+        
+        out << "mov" << " $" << cat << ", " << "%eax" << '\n';
+        out << "mov" << " $" << rest << ", " << "%edx" << '\n';
+    }
+
+    void divw(std::istringstream& lineWords, std::ofstream& out){
+        std::string src;
+        Operands::Operand op_s, ax, dx;
+        uint16_t val_s;
+        uint32_t dx_ax;
+
+        lineWords >> src;
+
+        op_s = getOperandFromString(src, 2);
+        val_s = (uint16_t)Operands::readOperand(op_s);
+
+        ax = { .type = Operands::OperandType::REGISTER, .regTag = Registers::AX };
+        dx = { .type = Operands::OperandType::REGISTER, .regTag = Registers::DX };
+
+        dx_ax = ((uint32_t)Operands::readOperand(dx) << 16) | (uint32_t)Operands::readOperand(ax);
+
+        uint16_t cat = dx_ax / val_s;
+        uint16_t rest = dx_ax % val_s;
+
+        Operands::writeOperand(ax, cat);
+        Operands::writeOperand(dx, rest);
+
+        out << "mov $" << cat << ", %ax\n";
+        out << "mov $" << rest << ", %dx\n";
+    }
+
+    void divb(std::istringstream& lineWords, std::ofstream& out) {
+    std::string src;
+    Operands::Operand op_s, al, ah;
+    uint8_t val_s;
+    uint16_t ah_al;
+
+    lineWords >> src;
+
+    op_s = getOperandFromString(src, 1);
+    val_s = (uint8_t)Operands::readOperand(op_s);
+
+    al = { .type = Operands::OperandType::REGISTER, .regTag = Registers::AL };
+    ah = { .type = Operands::OperandType::REGISTER, .regTag = Registers::AH };
+
+    ah_al = ((uint16_t)Operands::readOperand(ah) << 8) | (uint8_t)Operands::readOperand(al);
+
+    uint8_t cat = ah_al / val_s;
+    uint8_t rest = ah_al % val_s;
+
+    Operands::writeOperand(al, cat);
+    Operands::writeOperand(ah, rest);
+
+    out << "mov $" << (int)cat << ", %al\n";
+    out << "mov $" << (int)rest << ", %ah\n";
+}
+    void mov(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string src, dest;
+        Operands::Operand op_s, op_d;
+        lineWords >> src >> dest;
+        op_s = getOperandFromString(src, size);
+        op_d = getOperandFromString(dest, size);
+        Operands::writeOperand(op_d, Operands::readOperand(op_s));
+    }
 }
 
 int main(int argc, char* argv[]){
@@ -354,12 +443,24 @@ int main(int argc, char* argv[]){
                                                       
                     }    
                     if(section == TEXT){
+                        std::string originalLine = line;
                         std::replace(line.begin(), line.end(), ',', ' ');
                         std::istringstream lineWords(line);
                         std::string instruction;
                         lineWords >> instruction;
 
-                        if(instruction == "add")
+                        if(instruction == "mov" || instruction == "movl"){
+                            out << originalLine;
+                            Instr::mov(lineWords,out,4);
+                        }else if(instruction == "movw"){
+                            out << originalLine;
+                            Instr::mov(lineWords,out,2);
+                        }else if(instruction == "movb"){
+                            out << originalLine;
+                            Instr::mov(lineWords,out,1);
+                        }
+                        /*------------------------------*/
+                        else if(instruction == "add")
                             Instr::add(lineWords, out, 4);
                         else if(instruction == "addl")
                             Instr::add(lineWords, out, 4);
@@ -376,7 +477,13 @@ int main(int argc, char* argv[]){
                             Instr::sub(lineWords, out, 2);
                         else if(instruction == "subb")
                             Instr::sub(lineWords, out, 1);
-
+                        /*--------------------------------*/
+                        else if(instruction == "div" || instruction == "divl")
+                            Instr::div(lineWords,out);
+                        else if(instruction == "divw")
+                            Instr::divw(lineWords, out);
+                        else if(instruction == "divb")
+                            Instr::divb(lineWords, out);
 
                     }
                 }
@@ -403,25 +510,25 @@ int main(int argc, char* argv[]){
    
     // Operands::writeOperand(eaxx, 0x0101);
     //  eaxx={
-    //     .type=Operands::OperandType::ADDRESS,
-    //     .size=4,
-    //     .address=1
-    // };
-    // int32_t value = Operands::readOperand(eaxx);
-    // std::cout << std::bitset<32>(value) << std::endl;
-    return 0;
-}
-
-Operands::Operand getOperandFromString(std::string str, uint8_t size){
-    if(str[0] == '$'){
-        std::string l =  str.substr(1, str.length()-1);
-        return {.type=Operands::OperandType::IMMEDIATE, .imm=static_cast<int32_t>(std::stoul(l, nullptr, 0))};
-    }else if(str[0] == '%'){
-        return {.type=Operands::OperandType::REGISTER, .regTag=Registers::stringToTag[str]};
-    }else{
-        return {.type=Operands::OperandType::ADDRESS, 
-                .size=size,
-                .address=Mem::labels[str].address};
+        //     .type=Operands::OperandType::ADDRESS,
+        //     .size=4,
+        //     .address=1
+        // };
+        // int32_t value = Operands::readOperand(eaxx);
+        // std::cout << std::bitset<32>(value) << std::endl;
+        return 0;
     }
-    std::cerr << "Nu exista acest tip: " + str; 
-}
+
+    Operands::Operand getOperandFromString(std::string str, uint8_t size){
+        if(str[0] == '$'){
+            std::string l =  str.substr(1, str.length()-1);
+            return {.type=Operands::OperandType::IMMEDIATE, .imm=static_cast<int32_t>(std::stoul(l, nullptr, 0))};
+        }else if(str[0] == '%'){
+            return {.type=Operands::OperandType::REGISTER, .regTag=Registers::stringToTag[str]};
+        }else{
+            return {.type=Operands::OperandType::ADDRESS, 
+                    .size=size,
+                    .address=Mem::labels[str].address};
+        }
+        std::cerr << "Nu exista acest tip: " + str; 
+    }
