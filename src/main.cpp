@@ -25,16 +25,6 @@ uint32_t generateMask(uint8_t size){
         return mask;
     }
 
-namespace Mem{
-    uint8_t memory[MEMSIZE]; //start -> end memoria principala, end->start stiva
-    uint32_t memoryPeak=0;
-    struct Label{
-        uint8_t size;
-        uint32_t address;
-    };
-    std::unordered_map<std::string, Label> labels;
-}
-
 namespace Registers{
     int32_t eax=0, ebx=0, ecx=0, edx=0, esi=0, edi=0, esp=MEMSIZE, ebp, eip;
 
@@ -94,6 +84,16 @@ namespace Registers{
         {"%esp", ESP},
         {"%ebp", EBP}
     }; 
+}
+
+namespace Mem{
+    uint8_t memory[MEMSIZE]; //start -> end memoria principala, end->start stiva
+    uint32_t memoryPeak=0;
+    struct Label{
+        uint8_t size;
+        uint32_t address;
+    };
+    std::unordered_map<std::string, Label> labels;
 }
 
 namespace Operands{
@@ -208,15 +208,23 @@ namespace Instr{
         Operands::Operand src;
         Operands::Operand dest;
     };
-    int8_t cmpState; 
-    /*
-    -2 -> less
-    -1 -> less or equal
-     0 -> equal
-     1 -> greater or equal
-     2 -> greater
-    */
+
+    enum State{
+        L, //less
+        LE, // less or equal
+        E, // equal
+        GE, //greater or equal
+        G ,// greater
+        A, //above
+        Z, //zero
+    };
+    uint8_t flags[] = {0, 0, 0, 0, 0, 0, 0};
+    void resetFlags(){
+        for(uint8_t i = 0; i<7; i++)
+            flags[i] = 0;
+    }
     std::vector<std::string> instructions;
+    
     std::unordered_map<std::string, uint32_t> instr_labels;
 
     void add(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
@@ -224,6 +232,7 @@ namespace Instr{
         Operands::Operand op_s, op_d;
         int32_t val_s, val_d;
         lineWords >> src >> dest;
+        resetFlags();
 
         op_s = getOperandFromString(src, size);
         op_d = getOperandFromString(dest, size);
@@ -246,6 +255,7 @@ namespace Instr{
         Operands::Operand op_s, op_d;
         int32_t val_s, val_d;
         lineWords >> src >> dest;
+        resetFlags();
 
         op_s = getOperandFromString(src, size);
         op_d = getOperandFromString(dest, size);
@@ -268,6 +278,7 @@ namespace Instr{
         int32_t val_s;
         int64_t edx_eax;
         lineWords >> src;
+        resetFlags();
 
         op_s = getOperandFromString(src, 4);
         val_s = Operands::readOperand(op_s);
@@ -298,6 +309,7 @@ namespace Instr{
         int32_t val_s;
         int64_t result;
         lineWords >> src;
+        resetFlags();
 
         op_s = getOperandFromString(src, 4);
         val_s = Operands::readOperand(op_s);
@@ -331,6 +343,7 @@ namespace Instr{
         uint32_t dx_ax;
 
         lineWords >> src;
+        resetFlags();
 
         op_s = getOperandFromString(src, 2);
         val_s = (uint16_t)Operands::readOperand(op_s);
@@ -357,6 +370,7 @@ namespace Instr{
         uint32_t result;
 
         lineWords >> src;
+        resetFlags();
 
         op_s = getOperandFromString(src, 2);
         val_s = (uint16_t)Operands::readOperand(op_s);
@@ -384,6 +398,7 @@ namespace Instr{
         uint16_t ah_al;
 
         lineWords >> src;
+        resetFlags();
 
         op_s = getOperandFromString(src, 1);
         val_s = (uint8_t)Operands::readOperand(op_s);
@@ -410,6 +425,7 @@ namespace Instr{
         uint16_t result;
 
         lineWords >> src;
+        resetFlags();
 
         op_s = getOperandFromString(src, 1);
         val_s = (uint8_t)Operands::readOperand(op_s);
@@ -435,6 +451,7 @@ namespace Instr{
         lineWords >> src >> dest;
         op_s = getOperandFromString(src, size);
         op_d = getOperandFromString(dest, size);
+        resetFlags();
         Operands::writeOperand(op_d, Operands::readOperand(op_s));
     }
 
@@ -446,6 +463,7 @@ namespace Instr{
         lineWords >> src >> dest;
         op_s = getOperandFromString(src, size);
         op_d = getOperandFromString(dest, size);
+        resetFlags();
         auto val_s = Operands::readOperand(op_s);
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d | val_s;
@@ -463,6 +481,7 @@ namespace Instr{
         lineWords >> src >> dest;
         op_s = getOperandFromString(src, size);
         op_d = getOperandFromString(dest, size);
+        resetFlags();
         auto val_s = Operands::readOperand(op_s);
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d ^ val_s;
@@ -480,6 +499,7 @@ namespace Instr{
         lineWords >> src >> dest;
         op_s = getOperandFromString(src, size);
         op_d = getOperandFromString(dest, size);
+        resetFlags();
         auto val_s = Operands::readOperand(op_s);
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d & val_s;
@@ -498,6 +518,7 @@ namespace Instr{
         Operands::Operand op_d;
         lineWords >> dest;
         op_d = getOperandFromString(dest, size);
+        resetFlags();
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d + 1;
         Operands::writeOperand(op_d, val_d);
@@ -513,6 +534,7 @@ namespace Instr{
         Operands::Operand op_d;
         lineWords >> dest;
         op_d = getOperandFromString(dest, size);
+        resetFlags();
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d - 1;
         Operands::writeOperand(op_d, val_d);
@@ -530,6 +552,7 @@ namespace Instr{
         lineWords >> src >> dest;
         op_s = getOperandFromString(src, size);
         op_d = getOperandFromString(dest, size);
+        resetFlags();
         auto val_s = Operands::readOperand(op_s);
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d << val_s;
@@ -548,6 +571,7 @@ namespace Instr{
         lineWords >> src >> dest;
         op_s = getOperandFromString(src, size);
         op_d = getOperandFromString(dest, size);
+        resetFlags();
         auto val_s = Operands::readOperand(op_s);
         auto val_d = Operands::readOperand(op_d);
         val_d = static_cast<int32_t>(static_cast<uint32_t>(val_d) >> val_s);
@@ -566,6 +590,7 @@ namespace Instr{
         lineWords >> src >> dest;
         op_s = getOperandFromString(src, size);
         op_d = getOperandFromString(dest, size);
+        resetFlags();
         auto val_s = Operands::readOperand(op_s);
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d >> val_s;
@@ -578,12 +603,13 @@ namespace Instr{
             out << "movb" << " $" << val_d << ", " << dest << '\n';
     }
 
-void lea(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+    void lea(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
         std::string src, dest;
         Operands::Operand op_s, op_d;
         lineWords >> src >> dest;
         op_s = getOperandFromString(src, size);
         op_d = getOperandFromString(dest, size);
+        resetFlags();
         // lea loads the address of the source into the destination
         if(op_s.type == Operands::OperandType::ADDRESS){
             Operands::writeOperand(op_d, op_s.address);
@@ -596,14 +622,159 @@ void lea(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
         }
     }
 
-    
-    //mul
-    //push
-    //pop
-    //cmp
-    //call
-    //jmp
-    //loop
+    void push(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string src;
+        Operands::Operand op_s;
+        lineWords >> src;
+        op_s = getOperandFromString(src, size);
+        resetFlags();
+        auto val_s = Operands::readOperand(op_s);
+        Registers::esp -= 4;
+        Operands::Operand stack ={
+            .type=Operands::OperandType::ADDRESS,
+            .size=4,
+            .address=(uint32_t)Registers::esp
+        };
+        Operands::writeOperand(stack, val_s);
+        if(size == 4){
+            out << "mov" << " $" << Registers::esp << ", " << "%esp" << '\n';
+            out << "mov" << " $" << val_s << ", " << "0(%esp)" << '\n';
+        }
+        else if(size == 2){
+            out << "mov" << " $" << Registers::esp << ", " << "%esp" << '\n';
+            out << "movw" << " $" << val_s << ", " << "0(%esp)" << '\n';
+        }
+        else if(size == 1){
+            out << "mov" << " $" << Registers::esp << ", " << "%esp" << '\n';            
+            out << "movb" << " $" << val_s << ", " << "0(%esp)" << '\n';
+        }
+    }
+
+    void pop(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string dest;
+        Operands::Operand op_d;
+        lineWords >> dest;
+        op_d = getOperandFromString(dest, size);
+        resetFlags();
+        Operands::Operand stack ={
+            .type=Operands::OperandType::ADDRESS,
+            .size=4,
+            .address=(uint32_t)Registers::esp
+        };
+        auto val_d = Operands::readOperand(stack);
+        Operands::writeOperand(op_d, val_d);
+        Registers::esp += 4;
+        if(size == 4){
+            out << "mov" << " $" << Registers::esp << ", " << "%esp" << '\n';
+            out << "mov" << " $" << val_d << ", " << "0(%esp)" << '\n';
+        }
+        else if(size == 2){
+            out << "mov" << " $" << Registers::esp << ", " << "%esp" << '\n';
+            out << "movw" << " $" << val_d << ", " << "0(%esp)" << '\n';
+        }
+        else if(size == 1){
+            out << "mov" << " $" << Registers::esp << ", " << "%esp" << '\n';            
+            out << "movb" << " $" << val_d << ", " << "0(%esp)" << '\n';
+        }
+    }
+
+    void test(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string src, dest;
+        Operands::Operand op_s, op_d;
+        lineWords >> src >> dest;
+        op_s = getOperandFromString(src, size);
+        op_d = getOperandFromString(dest, size);
+        resetFlags();
+
+        auto val_s = Operands::readOperand(op_s);
+        auto val_d = Operands::readOperand(op_d);
+        auto result = val_s & val_d;
+
+        if(result == 0){
+            flags[E] = 1;
+            flags[Z] = 1;
+        }
+    }
+
+    void cmp(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string src, dest;
+        Operands::Operand op_s, op_d;
+        lineWords >> src >> dest;
+        op_s = getOperandFromString(src, size);
+        op_d = getOperandFromString(dest, size);
+        resetFlags();
+        
+        auto val_s = Operands::readOperand(op_s);
+        auto val_d = Operands::readOperand(op_d);
+        if(val_s <= val_d)
+            flags[LE] = 1;
+        if(val_s >= val_d)
+            flags[GE] = 1;
+        if(val_s == val_d){
+            flags[E] = 1;
+            flags[Z] = 1;
+        }
+            
+        if(val_s < val_d)
+            flags[L] = 1;
+        if(val_s > val_d)
+            flags[G] = 1;
+        if(static_cast<uint32_t>(val_s) < static_cast<uint32_t>(val_d))
+            flags[A] = 1;
+    }
+    std::string currentLabel;
+    void jmp(std::istringstream& lineWords, std::ofstream& out){
+        std::string targetLabel;
+       
+        lineWords >> targetLabel;
+        Registers::eip = Instr::instr_labels[targetLabel]+1;
+        currentLabel = targetLabel;
+    }
+
+    void loop(std::istringstream& lineWords, std::ofstream& out){
+        std::string targetLabel;
+        lineWords >> targetLabel;
+
+        Registers::ecx--;
+        if(Registers::ecx != 0){
+            Registers::eip = Instr::instr_labels[targetLabel] + 1;
+            Instr::currentLabel = targetLabel;
+        }
+    }
+    void call(std::istringstream& lineWords, std::ofstream& out){
+        std::string targetLabel;
+        lineWords >> targetLabel;
+
+        
+        uint32_t returnAddr = static_cast<uint32_t>(Registers::eip + 1);
+        Registers::esp -= 4;
+        Operands::Operand stackSlot = {
+            .type=Operands::OperandType::ADDRESS,
+            .size=4,
+            .address=(uint32_t)Registers::esp
+        };
+        Operands::writeOperand(stackSlot, static_cast<int32_t>(returnAddr));
+
+        Registers::eip = Instr::instr_labels[targetLabel];
+        Instr::currentLabel = targetLabel;
+    }
+    void ret(std::istringstream& lineWords, std::ofstream& out){
+        Operands::Operand stackSlot = {
+            .type=Operands::OperandType::ADDRESS,
+            .size=4,
+            .address=(uint32_t)Registers::esp
+        };
+        uint32_t returnAddr = static_cast<uint32_t>(Operands::readOperand(stackSlot));
+        Registers::esp += 4;
+
+        if(returnAddr < Instr::instructions.size()){
+            // Set eip so post-iteration increment lands on the return address
+            Registers::eip = static_cast<int32_t>(returnAddr) - 1;
+        } else {
+            // Invalid address: end execution
+            Registers::eip = Instr::instructions.size();
+        }
+    }
 }
 
 int main(int argc, char* argv[]){
@@ -635,7 +806,7 @@ int main(int argc, char* argv[]){
                 TEXT
             };
             Sections section;
-            std::string line, currentLabel;
+            std::string line;
             uint32_t instr_counter = 0;
             while(std::getline(in, line)){
                 if(line != ""){
@@ -738,13 +909,17 @@ int main(int argc, char* argv[]){
                         lineWords >> word;
                         if(word == ".global"){
                             lineWords >> word;
-                            currentLabel = word;
+                            Instr::currentLabel = word;
+                            out << line << '\n';
                         }else{
                             if(line.back()==':'){
+                                Instr::instructions.push_back(line+'\n');
                                 line.pop_back();
                                 Instr::instr_labels[line] = instr_counter;
+                                std::cout << line << ':' << instr_counter << '\n';
+                                instr_counter++;
                             }else{
-                                Instr::instructions.push_back(line);
+                                Instr::instructions.push_back(line+'\n');
                                 instr_counter++;
                             }
                         }
@@ -754,11 +929,21 @@ int main(int argc, char* argv[]){
                 
             }
             
-            
-            Registers::eip = Instr::instr_labels[currentLabel];
+            Instr::instructions.insert(Instr::instructions.begin() + Instr::instr_labels[Instr::currentLabel] + 1, "movl $" + std::to_string(MEMSIZE) + ", %esp\n");
+            out << Instr::currentLabel+":" << '\n';
+            Registers::eip = Instr::instr_labels[Instr::currentLabel];
             while(Registers::eip< Instr::instructions.size()){
+
                 std::string line = Instr::instructions[Registers::eip];
                 std::string originalLine = line;
+
+                if(!line.empty() && line.back()=='\n') line.pop_back();
+                if(!line.empty() && line.back()==':'){
+                    line.pop_back();
+                    Instr::currentLabel = line;
+                    Registers::eip++;
+                    continue;
+                }
                 std::replace(line.begin(), line.end(), ',', ' ');
                 std::istringstream lineWords(line);
                 std::string instruction;
@@ -862,7 +1047,116 @@ int main(int argc, char* argv[]){
                 else if(instruction == "leab")
                     Instr::lea(lineWords, out, 1);
                 /*---------------------------------*/
-                
+                else if(instruction == "push")
+                    Instr::push(lineWords, out, 4);
+                else if(instruction == "pushl")
+                    Instr::push(lineWords, out, 4);
+                else if(instruction == "pushw")
+                    Instr::push(lineWords, out, 2);
+                else if(instruction == "pushb")
+                    Instr::push(lineWords, out, 1);
+                /*---------------------------------*/
+                else if(instruction == "pop")
+                    Instr::pop(lineWords, out, 4);
+                else if(instruction == "popl")
+                    Instr::pop(lineWords, out, 4);
+                else if(instruction == "popw")
+                    Instr::pop(lineWords, out, 2);
+                else if(instruction == "popb")
+                    Instr::pop(lineWords, out, 1);
+                /*---------------------------------*/
+                else if(instruction == "test")
+                    Instr::test(lineWords, out, 4);
+                else if(instruction == "testl")
+                    Instr::test(lineWords, out, 4);
+                else if(instruction == "testw")
+                    Instr::test(lineWords, out, 2);
+                else if(instruction == "testb")
+                    Instr::test(lineWords, out, 1);
+                /*---------------------------------*/
+                else if(instruction == "cmp")
+                    Instr::cmp(lineWords, out, 4);
+                else if(instruction == "cmpl")
+                    Instr::cmp(lineWords, out, 4);
+                else if(instruction == "cmpw")
+                    Instr::cmp(lineWords, out, 2);
+                else if(instruction == "cmpb")
+                    Instr::cmp(lineWords, out, 1);
+                /*---------------------------------*/       
+                else if(instruction == "jl"){
+                    if(Instr::flags[Instr::L] == 1)
+                        Instr::jmp(lineWords, out);
+                }
+                else if(instruction == "jle"){
+                    if(Instr::flags[Instr::LE] == 1)
+                        Instr::jmp(lineWords, out);
+                }
+                else if(instruction == "je"){
+                    if(Instr::flags[Instr::E] == 1)
+                        Instr::jmp(lineWords, out);
+                }
+                else if(instruction == "jge"){
+                    if(Instr::flags[Instr::GE] == 1)
+                        Instr::jmp(lineWords, out);
+                }
+                else if(instruction == "jg"){
+                    if(Instr::flags[Instr::G] == 1)
+                        Instr::jmp(lineWords, out);
+                }
+                else if(instruction == "ja"){
+                    if(Instr::flags[Instr::A] == 1)
+                        Instr::jmp(lineWords, out);
+                }
+                else if(instruction == "jne"){
+                    if(Instr::flags[Instr::E] == 0)
+                        Instr::jmp(lineWords, out);
+                }
+                else if(instruction == "jz"){
+                    if(Instr::flags[Instr::Z] == 1)
+                        Instr::jmp(lineWords, out);
+                }
+                else if(instruction == "jnz"){
+                    if(Instr::flags[Instr::Z] == 0)
+                        Instr::jmp(lineWords, out);
+                }
+                else if(instruction == "jmp")
+                    Instr::jmp(lineWords, out);
+                else if(instruction == "loop")
+                    Instr::loop(lineWords, out);
+                else if(instruction == "call")
+                    Instr::call(lineWords, out);
+                else if(instruction == "ret")
+                    Instr::ret(lineWords, out);
+                /*---------------------------------*/
+                else if(instruction == "sar")
+                    Instr::sar(lineWords, out, 4);
+                else if(instruction == "sarl")
+                    Instr::sar(lineWords, out, 4);
+                else if(instruction == "sarw")
+                    Instr::sar(lineWords, out, 2);
+                else if(instruction == "sarb")
+                    Instr::sar(lineWords, out, 1);
+                /*---------------------------------*/
+                else if(instruction == "shr")
+                    Instr::shr(lineWords, out, 4);
+                else if(instruction == "shrl")
+                    Instr::shr(lineWords, out, 4);
+                else if(instruction == "shrw")
+                    Instr::shr(lineWords, out, 2);
+                else if(instruction == "shrb")
+                    Instr::shr(lineWords, out, 1);
+                /*---------------------------------*/
+                else if(instruction == "shl")
+                    Instr::shl(lineWords, out, 4);
+                else if(instruction == "shll")
+                    Instr::shl(lineWords, out, 4);
+                else if(instruction == "shlw")
+                    Instr::shl(lineWords, out, 2);
+                else if(instruction == "shlb")
+                    Instr::shl(lineWords, out, 1);
+                else if(instruction == "int")
+                    out << Instr::instructions[Registers::eip];
+                else std::cerr << instruction + " not known";
                 Registers::eip++;
             }
             in.close();
