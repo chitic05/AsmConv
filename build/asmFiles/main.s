@@ -1,10 +1,11 @@
 .data
-    x: .long 3
+    x: .long 1, 0, 31
+    y: .long 0
 .text
 
 .global main
 
 main:
-    add x, %eax
-    sub $2, %eax
-    movb %al, %bl
+    add $x, %eax
+    add 8(%eax), %ebx
+

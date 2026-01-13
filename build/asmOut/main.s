@@ -1,6 +1,6 @@
 .data
-    x: .long 3
+    x: .long 1, 0, 31
+    y: .long 0
 .text
-mov $3, %eax
-mov $1, %eax
-    movb %al, %bl
+mov $0, %eax
+mov $31, %ebx

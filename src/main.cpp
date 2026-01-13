@@ -36,7 +36,7 @@ namespace Mem{
 }
 
 namespace Registers{
-    int32_t eax=0, ebx=0, ecx=0, edx=0, esi=0, edi=0, esp=MEMSIZE, ebp;
+    int32_t eax=0, ebx=0, ecx=0, edx=0, esi=0, edi=0, esp=MEMSIZE, ebp, eip;
 
     enum Reg{
         EAX, AX, AH, AL,
@@ -109,9 +109,13 @@ namespace Operands{
         uint8_t size;
 
         int32_t imm;
-        uint32_t address; // for data labels(accessing memory)
+        uint32_t address; 
         Registers::Reg regTag; 
-          
+        
+        //2(reg) (reg,32,32)
+        bool isIndirect = false;
+        Registers::Reg baseReg;
+        int32_t displacement = 0;
     };
 
     int32_t readOperand(const Operand& op){
@@ -123,13 +127,20 @@ namespace Operands{
                 break;
             }
             case OperandType::ADDRESS:{
+                uint32_t memAddr = op.address;
+                
+                if(op.isIndirect){
+                    Registers::RegDef registerData = Registers::regData[op.baseReg];
+                    memAddr = (uint32_t)(*registerData.base_register) + op.displacement;
+                }
+                
                 uint32_t value = 0;
                 for (uint8_t i = 0; i < op.size; i++) {
-                    value |= static_cast<uint32_t>(Mem::memory[op.address + i]) << (8 * i);
+                    value |= static_cast<uint32_t>(Mem::memory[memAddr + i]) << (8 * i);
                 }
 
                 if(op.size == 1) return (int32_t)(int8_t)value;
-                else if(op.size == 2) return (int32_t)(int16_t)value; // fixed negative number problems
+                else if(op.size == 2) return (int32_t)(int16_t)value;
                 return (int32_t) value;
                 break;
             }
@@ -158,10 +169,17 @@ namespace Operands{
                 break;
             }
             case OperandType::ADDRESS:{
+                uint32_t memAddr = op.address;
+                
+                if(op.isIndirect){
+                    Registers::RegDef registerData = Registers::regData[op.baseReg];
+                    memAddr = (uint32_t)(*registerData.base_register) + op.displacement;
+                }
+                
                 uint32_t v = static_cast<uint32_t>(value);
                 for(uint8_t i=0; i<op.size;i++){
                     uint8_t byte = static_cast<uint8_t>(v & 0xFF);
-                    Mem::memory[op.address+i] = byte;
+                    Mem::memory[memAddr+i] = byte;
                     v >>= 8;
                 }
                 break;
@@ -190,8 +208,16 @@ namespace Instr{
         Operands::Operand src;
         Operands::Operand dest;
     };
-
-    std::vector<Instruction> instructions;
+    int8_t cmpState; 
+    /*
+    -2 -> less
+    -1 -> less or equal
+     0 -> equal
+     1 -> greater or equal
+     2 -> greater
+    */
+    std::vector<std::string> instructions;
+    std::unordered_map<std::string, uint32_t> instr_labels;
 
     void add(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
         std::string src, dest;
@@ -207,7 +233,12 @@ namespace Instr{
 
         int32_t sum = val_s + val_d;
         Operands::writeOperand(op_d, sum);
-        out << "mov" << " $" << sum << ", " << dest << '\n';
+        if(size == 4)
+            out << "mov" << " $" << sum << ", " << dest << '\n';
+        else if(size == 2)
+            out << "movw" << " $" << sum << ", " << dest << '\n';
+        else if(size == 1)
+            out << "movb" << " $" << sum << ", " << dest << '\n';
     }
 
     void sub(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
@@ -224,7 +255,12 @@ namespace Instr{
 
         int32_t sub = val_d - val_s;
         Operands::writeOperand(op_d, sub);
-        out << "mov" << " $" << sub << ", " << dest << '\n';
+        if(size == 4)
+            out << "mov" << " $" << sub << ", " << dest << '\n';
+        else if(size == 2)
+            out << "movw" << " $" << sub << ", " << dest << '\n';
+        else if(size == 1)
+            out << "movb" << " $" << sub << ", " << dest << '\n';
     }
     void div(std::istringstream& lineWords, std::ofstream& out){
         std::string src, dest;
@@ -256,6 +292,38 @@ namespace Instr{
         out << "mov" << " $" << rest << ", " << "%edx" << '\n';
     }
 
+    void mul(std::istringstream& lineWords, std::ofstream& out){
+        std::string src;
+        Operands::Operand op_s, eax, edx;
+        int32_t val_s;
+        int64_t result;
+        lineWords >> src;
+
+        op_s = getOperandFromString(src, 4);
+        val_s = Operands::readOperand(op_s);
+        
+        edx = {
+            .type=Operands::OperandType::REGISTER,
+            .regTag=Registers::EDX
+        };
+        eax = {
+            .type=Operands::OperandType::REGISTER,
+            .regTag=Registers::EAX
+        };
+
+        int32_t eax_val = Operands::readOperand(eax);
+        result = (int64_t)eax_val * val_s;
+        
+        uint32_t high = (uint32_t)(result >> 32);
+        uint32_t low = (uint32_t)result;
+        
+        Operands::writeOperand(eax, low);
+        Operands::writeOperand(edx, high);
+        
+        out << "mov" << " $" << low << ", " << "%eax" << '\n';
+        out << "mov" << " $" << high << ", " << "%edx" << '\n';
+    }
+
     void divw(std::istringstream& lineWords, std::ofstream& out){
         std::string src;
         Operands::Operand op_s, ax, dx;
@@ -278,35 +346,89 @@ namespace Instr{
         Operands::writeOperand(ax, cat);
         Operands::writeOperand(dx, rest);
 
-        out << "mov $" << cat << ", %ax\n";
-        out << "mov $" << rest << ", %dx\n";
+        out << "movw $" << cat << ", %ax\n";
+        out << "movw $" << rest << ", %dx\n";
+    }
+
+    void mulw(std::istringstream& lineWords, std::ofstream& out){
+        std::string src;
+        Operands::Operand op_s, ax, dx;
+        uint16_t val_s;
+        uint32_t result;
+
+        lineWords >> src;
+
+        op_s = getOperandFromString(src, 2);
+        val_s = (uint16_t)Operands::readOperand(op_s);
+
+        ax = { .type = Operands::OperandType::REGISTER, .regTag = Registers::AX };
+        dx = { .type = Operands::OperandType::REGISTER, .regTag = Registers::DX };
+
+        uint16_t ax_val = (uint16_t)Operands::readOperand(ax);
+        result = (uint32_t)ax_val * val_s;
+
+        uint16_t high = (uint16_t)(result >> 16);
+        uint16_t low = (uint16_t)result;
+
+        Operands::writeOperand(ax, low);
+        Operands::writeOperand(dx, high);
+
+        out << "movw $" << low << ", %ax\n";
+        out << "movw $" << high << ", %dx\n";
     }
 
     void divb(std::istringstream& lineWords, std::ofstream& out) {
-    std::string src;
-    Operands::Operand op_s, al, ah;
-    uint8_t val_s;
-    uint16_t ah_al;
+        std::string src;
+        Operands::Operand op_s, al, ah;
+        uint8_t val_s;
+        uint16_t ah_al;
 
-    lineWords >> src;
+        lineWords >> src;
 
-    op_s = getOperandFromString(src, 1);
-    val_s = (uint8_t)Operands::readOperand(op_s);
+        op_s = getOperandFromString(src, 1);
+        val_s = (uint8_t)Operands::readOperand(op_s);
 
-    al = { .type = Operands::OperandType::REGISTER, .regTag = Registers::AL };
-    ah = { .type = Operands::OperandType::REGISTER, .regTag = Registers::AH };
+        al = { .type = Operands::OperandType::REGISTER, .regTag = Registers::AL };
+        ah = { .type = Operands::OperandType::REGISTER, .regTag = Registers::AH };
 
-    ah_al = ((uint16_t)Operands::readOperand(ah) << 8) | (uint8_t)Operands::readOperand(al);
+        ah_al = ((uint16_t)Operands::readOperand(ah) << 8) | (uint8_t)Operands::readOperand(al);
 
-    uint8_t cat = ah_al / val_s;
-    uint8_t rest = ah_al % val_s;
+        uint8_t cat = ah_al / val_s;
+        uint8_t rest = ah_al % val_s;
 
-    Operands::writeOperand(al, cat);
-    Operands::writeOperand(ah, rest);
+        Operands::writeOperand(al, cat);
+        Operands::writeOperand(ah, rest);
 
-    out << "mov $" << (int)cat << ", %al\n";
-    out << "mov $" << (int)rest << ", %ah\n";
-}
+        out << "mob $" << (int)cat << ", %al\n";
+        out << "mob $" << (int)rest << ", %ah\n";
+    }
+
+    void mulb(std::istringstream& lineWords, std::ofstream& out) {
+        std::string src;
+        Operands::Operand op_s, al, ah;
+        uint8_t val_s;
+        uint16_t result;
+
+        lineWords >> src;
+
+        op_s = getOperandFromString(src, 1);
+        val_s = (uint8_t)Operands::readOperand(op_s);
+
+        al = { .type = Operands::OperandType::REGISTER, .regTag = Registers::AL };
+        ah = { .type = Operands::OperandType::REGISTER, .regTag = Registers::AH };
+
+        uint8_t al_val = (uint8_t)Operands::readOperand(al);
+        result = (uint16_t)al_val * val_s;
+
+        uint8_t high = (uint8_t)(result >> 8);
+        uint8_t low = (uint8_t)result;
+
+        Operands::writeOperand(al, low);
+        Operands::writeOperand(ah, high);
+
+        out << "movb $" << (int)low << ", %al\n";
+        out << "movb $" << (int)high << ", %ah\n";
+    }
     void mov(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
         std::string src, dest;
         Operands::Operand op_s, op_d;
@@ -315,6 +437,173 @@ namespace Instr{
         op_d = getOperandFromString(dest, size);
         Operands::writeOperand(op_d, Operands::readOperand(op_s));
     }
+
+
+
+    void _or(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string src, dest;
+        Operands::Operand op_s, op_d;
+        lineWords >> src >> dest;
+        op_s = getOperandFromString(src, size);
+        op_d = getOperandFromString(dest, size);
+        auto val_s = Operands::readOperand(op_s);
+        auto val_d = Operands::readOperand(op_d);
+        val_d = val_d | val_s;
+        Operands::writeOperand(op_d, val_d);
+        if(size == 4)
+            out << "mov" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 2)
+            out << "movw" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 1)
+            out << "movb" << " $" << val_d << ", " << dest << '\n';
+    }
+    void _xor(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string src, dest;
+        Operands::Operand op_s, op_d;
+        lineWords >> src >> dest;
+        op_s = getOperandFromString(src, size);
+        op_d = getOperandFromString(dest, size);
+        auto val_s = Operands::readOperand(op_s);
+        auto val_d = Operands::readOperand(op_d);
+        val_d = val_d ^ val_s;
+        Operands::writeOperand(op_d, val_d);
+        if(size == 4)
+            out << "mov" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 2)
+            out << "movw" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 1)
+            out << "movb" << " $" << val_d << ", " << dest << '\n';
+    }
+    void _and(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string src, dest;
+        Operands::Operand op_s, op_d;
+        lineWords >> src >> dest;
+        op_s = getOperandFromString(src, size);
+        op_d = getOperandFromString(dest, size);
+        auto val_s = Operands::readOperand(op_s);
+        auto val_d = Operands::readOperand(op_d);
+        val_d = val_d & val_s;
+        Operands::writeOperand(op_d, val_d);
+        if(size == 4)
+            out << "mov" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 2)
+            out << "movw" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 1)
+            out << "movb" << " $" << val_d << ", " << dest << '\n';
+
+    }
+
+    void inc(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string dest;
+        Operands::Operand op_d;
+        lineWords >> dest;
+        op_d = getOperandFromString(dest, size);
+        auto val_d = Operands::readOperand(op_d);
+        val_d = val_d + 1;
+        Operands::writeOperand(op_d, val_d);
+        if(size == 4)
+            out << "mov" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 2)
+            out << "movw" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 1)
+            out << "movb" << " $" << val_d << ", " << dest << '\n';
+    }
+    void dec(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string dest;
+        Operands::Operand op_d;
+        lineWords >> dest;
+        op_d = getOperandFromString(dest, size);
+        auto val_d = Operands::readOperand(op_d);
+        val_d = val_d - 1;
+        Operands::writeOperand(op_d, val_d);
+        if(size == 4)
+            out << "mov" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 2)
+            out << "movw" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 1)
+            out << "movb" << " $" << val_d << ", " << dest << '\n';
+    }
+
+    void shl(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string src, dest;
+        Operands::Operand op_s, op_d;
+        lineWords >> src >> dest;
+        op_s = getOperandFromString(src, size);
+        op_d = getOperandFromString(dest, size);
+        auto val_s = Operands::readOperand(op_s);
+        auto val_d = Operands::readOperand(op_d);
+        val_d = val_d << val_s;
+        Operands::writeOperand(op_d, val_d);
+        if(size == 4)
+            out << "mov" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 2)
+            out << "movw" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 1)
+            out << "movb" << " $" << val_d << ", " << dest << '\n';
+    }
+
+    void shr(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string src, dest;
+        Operands::Operand op_s, op_d;
+        lineWords >> src >> dest;
+        op_s = getOperandFromString(src, size);
+        op_d = getOperandFromString(dest, size);
+        auto val_s = Operands::readOperand(op_s);
+        auto val_d = Operands::readOperand(op_d);
+        val_d = static_cast<int32_t>(static_cast<uint32_t>(val_d) >> val_s);
+        Operands::writeOperand(op_d, val_d);
+        if(size == 4)
+            out << "mov" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 2)
+            out << "movw" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 1)
+            out << "movb" << " $" << val_d << ", " << dest << '\n';
+    }
+
+    void sar(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string src, dest;
+        Operands::Operand op_s, op_d;
+        lineWords >> src >> dest;
+        op_s = getOperandFromString(src, size);
+        op_d = getOperandFromString(dest, size);
+        auto val_s = Operands::readOperand(op_s);
+        auto val_d = Operands::readOperand(op_d);
+        val_d = val_d >> val_s;
+        Operands::writeOperand(op_d, val_d);
+        if(size == 4)
+            out << "mov" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 2)
+            out << "movw" << " $" << val_d << ", " << dest << '\n';
+        else if(size == 1)
+            out << "movb" << " $" << val_d << ", " << dest << '\n';
+    }
+
+void lea(std::istringstream& lineWords, std::ofstream& out, uint8_t size){
+        std::string src, dest;
+        Operands::Operand op_s, op_d;
+        lineWords >> src >> dest;
+        op_s = getOperandFromString(src, size);
+        op_d = getOperandFromString(dest, size);
+        // lea loads the address of the source into the destination
+        if(op_s.type == Operands::OperandType::ADDRESS){
+            Operands::writeOperand(op_d, op_s.address);
+            if(size == 4)
+                out << "mov" << " $" << op_s.address << ", " << dest << '\n';
+            else if(size == 2)
+                out << "movw" << " $" << op_s.address << ", " << dest << '\n';
+            else if(size == 1)
+                out << "movb" << " $" << op_s.address << ", " << dest << '\n';
+        }
+    }
+
+    
+    //mul
+    //push
+    //pop
+    //cmp
+    //call
+    //jmp
+    //loop
 }
 
 int main(int argc, char* argv[]){
@@ -346,7 +635,8 @@ int main(int argc, char* argv[]){
                 TEXT
             };
             Sections section;
-            std::string line;
+            std::string line, currentLabel;
+            uint32_t instr_counter = 0;
             while(std::getline(in, line)){
                 if(line != ""){
                     if(line == ".data"){
@@ -443,56 +733,138 @@ int main(int argc, char* argv[]){
                                                       
                     }    
                     if(section == TEXT){
-                        std::string originalLine = line;
-                        std::replace(line.begin(), line.end(), ',', ' ');
+                        std::string word;
                         std::istringstream lineWords(line);
-                        std::string instruction;
-                        lineWords >> instruction;
-
-                        if(instruction == "mov" || instruction == "movl"){
-                            out << originalLine;
-                            Instr::mov(lineWords,out,4);
-                        }else if(instruction == "movw"){
-                            out << originalLine;
-                            Instr::mov(lineWords,out,2);
-                        }else if(instruction == "movb"){
-                            out << originalLine;
-                            Instr::mov(lineWords,out,1);
+                        lineWords >> word;
+                        if(word == ".global"){
+                            lineWords >> word;
+                            currentLabel = word;
+                        }else{
+                            if(line.back()==':'){
+                                line.pop_back();
+                                Instr::instr_labels[line] = instr_counter;
+                            }else{
+                                Instr::instructions.push_back(line);
+                                instr_counter++;
+                            }
                         }
-                        /*------------------------------*/
-                        else if(instruction == "add")
-                            Instr::add(lineWords, out, 4);
-                        else if(instruction == "addl")
-                            Instr::add(lineWords, out, 4);
-                        else if(instruction == "addw")
-                            Instr::add(lineWords, out, 2);
-                        else if(instruction == "addb")
-                            Instr::add(lineWords, out, 1);
-                        /*-------------------------------*/
-                        else if(instruction == "sub")
-                            Instr::sub(lineWords, out, 4);
-                        else if(instruction == "subl")
-                            Instr::sub(lineWords, out, 4);
-                        else if(instruction == "subw")
-                            Instr::sub(lineWords, out, 2);
-                        else if(instruction == "subb")
-                            Instr::sub(lineWords, out, 1);
-                        /*--------------------------------*/
-                        else if(instruction == "div" || instruction == "divl")
-                            Instr::div(lineWords,out);
-                        else if(instruction == "divw")
-                            Instr::divw(lineWords, out);
-                        else if(instruction == "divb")
-                            Instr::divb(lineWords, out);
-
+                        
                     }
                 }
                 
             }
-            // for(uint i = Mem::labels["ch"].address; i<Mem::memoryPeak;i+=Mem::labels["ch"].size){
-            //     int32_t v = Operands::readOperand({.type=Operands::OperandType::ADDRESS, .size=1,.address=i});
-            //     std::cout << v;
-            // }
+            
+            
+            Registers::eip = Instr::instr_labels[currentLabel];
+            while(Registers::eip< Instr::instructions.size()){
+                std::string line = Instr::instructions[Registers::eip];
+                std::string originalLine = line;
+                std::replace(line.begin(), line.end(), ',', ' ');
+                std::istringstream lineWords(line);
+                std::string instruction;
+                lineWords >> instruction;
+
+                if(instruction == "mov" || instruction == "movl"){
+                    out << originalLine;
+                    Instr::mov(lineWords,out,4);
+                }else if(instruction == "movw"){
+                    out << originalLine;
+                    Instr::mov(lineWords,out,2);
+                }else if(instruction == "movb"){
+                    out << originalLine;
+                    Instr::mov(lineWords,out,1);
+                }
+                /*------------------------------*/
+                else if(instruction == "add")
+                    Instr::add(lineWords, out, 4);
+                else if(instruction == "addl")
+                    Instr::add(lineWords, out, 4);
+                else if(instruction == "addw")
+                    Instr::add(lineWords, out, 2);
+                else if(instruction == "addb")
+                    Instr::add(lineWords, out, 1);
+                /*-------------------------------*/
+                else if(instruction == "sub")
+                    Instr::sub(lineWords, out, 4);
+                else if(instruction == "subl")
+                    Instr::sub(lineWords, out, 4);
+                else if(instruction == "subw")
+                    Instr::sub(lineWords, out, 2);
+                else if(instruction == "subb")
+                    Instr::sub(lineWords, out, 1);
+                /*--------------------------------*/
+                else if(instruction == "div" || instruction == "divl")
+                    Instr::div(lineWords,out);
+                else if(instruction == "divw")
+                    Instr::divw(lineWords, out);
+                else if(instruction == "divb")
+                    Instr::divb(lineWords, out);
+                /*---------------------------------*/
+                else if(instruction == "mul" || instruction == "mull")
+                    Instr::mul(lineWords,out);
+                else if(instruction == "mulw")
+                    Instr::mulw(lineWords, out);
+                else if(instruction == "mulb")
+                    Instr::mulb(lineWords, out);
+                
+                /*---------------------------------*/
+                else if(instruction == "or")
+                    Instr::_or(lineWords, out, 4);
+                else if(instruction == "orl")
+                    Instr::_or(lineWords, out, 4);
+                else if(instruction == "orw")
+                    Instr::_or(lineWords, out, 2);
+                else if(instruction == "orb")
+                    Instr::_or(lineWords, out, 1);
+                /*---------------------------------*/
+                else if(instruction == "xor")
+                    Instr::_xor(lineWords, out, 4);
+                else if(instruction == "xorl")
+                    Instr::_xor(lineWords, out, 4);
+                else if(instruction == "xorw")
+                    Instr::_xor(lineWords, out, 2);
+                else if(instruction == "xorb")
+                    Instr::_xor(lineWords, out, 1);
+                /*---------------------------------*/
+                else if(instruction == "and")
+                    Instr::_and(lineWords, out, 4);
+                else if(instruction == "andl")
+                    Instr::_and(lineWords, out, 4);
+                else if(instruction == "andw")
+                    Instr::_and(lineWords, out, 2);
+                else if(instruction == "andb")
+                    Instr::_and(lineWords, out, 1);
+                /*---------------------------------*/
+                else if(instruction == "inc")
+                    Instr::inc(lineWords, out, 4);
+                else if(instruction == "incl")
+                    Instr::inc(lineWords, out, 4);
+                else if(instruction == "incw")
+                    Instr::inc(lineWords, out, 2);
+                else if(instruction == "incb")
+                    Instr::inc(lineWords, out, 1);
+                /*---------------------------------*/
+                else if(instruction == "dec")
+                    Instr::dec(lineWords, out, 4);
+                else if(instruction == "decl")
+                    Instr::dec(lineWords, out, 4);
+                else if(instruction == "decw")
+                    Instr::dec(lineWords, out, 2);
+                else if(instruction == "decb")
+                    Instr::dec(lineWords, out, 1);
+                /*---------------------------------*/
+                else if(instruction == "lea")
+                    Instr::lea(lineWords, out, 4);
+                else if(instruction == "leal")
+                    Instr::lea(lineWords, out, 4);
+                else if(instruction == "leaw")
+                    Instr::lea(lineWords, out, 2);
+                else if(instruction == "leab")
+                    Instr::lea(lineWords, out, 1);
+                /*---------------------------------*/
+                
+                Registers::eip++;
+            }
             in.close();
             out.close();
         }        
@@ -501,34 +873,50 @@ int main(int argc, char* argv[]){
         std::cout << "PLEASE GIVE ME AT LEAST 1 FILE!";
     }
 
-    // Operands::Operand eaxx = {
-    //     .type=Operands::OperandType::ADDRESS,
-    //     .size=4,
-    //     .address=0
-    // };
-
-   
-    // Operands::writeOperand(eaxx, 0x0101);
-    //  eaxx={
-        //     .type=Operands::OperandType::ADDRESS,
-        //     .size=4,
-        //     .address=1
-        // };
-        // int32_t value = Operands::readOperand(eaxx);
-        // std::cout << std::bitset<32>(value) << std::endl;
         return 0;
-    }
+}
 
-    Operands::Operand getOperandFromString(std::string str, uint8_t size){
-        if(str[0] == '$'){
-            std::string l =  str.substr(1, str.length()-1);
-            return {.type=Operands::OperandType::IMMEDIATE, .imm=static_cast<int32_t>(std::stoul(l, nullptr, 0))};
-        }else if(str[0] == '%'){
-            return {.type=Operands::OperandType::REGISTER, .regTag=Registers::stringToTag[str]};
+Operands::Operand getOperandFromString(std::string str, uint8_t size){
+    if(str[0] == '$'){
+        std::string l =  str.substr(1, str.length()-1);
+        if(Mem::labels.count(l)){
+            return {.type=Operands::OperandType::IMMEDIATE, .imm=static_cast<int32_t>(Mem::labels[l].address)};
         }else{
-            return {.type=Operands::OperandType::ADDRESS, 
-                    .size=size,
-                    .address=Mem::labels[str].address};
+            return {.type=Operands::OperandType::IMMEDIATE, .imm=static_cast<int32_t>(std::stoul(l, nullptr, 0))};
         }
-        std::cerr << "Nu exista acest tip: " + str; 
+    }else if(str[0] == '%'){
+        return {.type=Operands::OperandType::REGISTER, .regTag=Registers::stringToTag[str]};
+    }else if(str[0] == '('){
+        
+        size_t closePos = str.find(')');
+        std::string regStr = str.substr(1, closePos - 1);
+        return {.type=Operands::OperandType::ADDRESS,
+                .size=size,
+                .address=0,
+                .isIndirect=true,
+                .baseReg=Registers::stringToTag[regStr],
+                .displacement=0};
+    }else if(str.find('(') != std::string::npos){
+        size_t openPos = str.find('(');
+        std::string dispStr = str.substr(0, openPos);
+        size_t closePos = str.find(')');
+        std::string regStr = str.substr(openPos + 1, closePos - openPos - 1);
+        
+        int32_t displacement = 0;
+        if(!dispStr.empty()){
+            displacement = static_cast<int32_t>(std::stol(dispStr, nullptr, 0));
+        }
+        
+        return {.type=Operands::OperandType::ADDRESS,
+                .size=size,
+                .address=0,
+                .isIndirect=true,
+                .baseReg=Registers::stringToTag[regStr],
+                .displacement=displacement};
+    }else{
+        return {.type=Operands::OperandType::ADDRESS, 
+                .size=size,
+                .address=Mem::labels[str].address};
     }
+    std::cerr << "Nu exista acest tip: " + str; 
+}
