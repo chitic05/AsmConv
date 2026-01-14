@@ -281,10 +281,8 @@ movl (%esi,%eax,4), %ecx
 movl $100, %eax
 movl (%esi,%eax,4), %ecx
 movl $101, %eax
-subl $4, %esp
-movl %ebx, 0(%esp)
-subl $4, %esp
-movl $formatAfisare, 0(%esp)
+pushl %ebx
+pushl $formatAfisare
 call printf
 addl $8, %esp
 movl $1, %eax

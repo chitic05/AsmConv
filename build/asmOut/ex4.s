@@ -64,15 +64,11 @@ movl max2, %ebx
 movl $9, %eax
 movl $0, %ecx
 movl max2, %edx
-subl $4, %esp
-movl max2, 0(%esp)
-subl $4, %esp
-movl $formatAf, 0(%esp)
+pushl max2
+pushl $formatAf
 call printf
-movl 0(%esp), %ebx
-addl $4, %esp
-movl 0(%esp), %ebx
-addl $4, %esp
+popl %ebx
+popl %ebx
 movl $1, %eax
 movl $0, %ebx
 int $0x80

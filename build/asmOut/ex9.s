@@ -7,7 +7,7 @@ x3: .ascii "maria2"
 _start:
 movl $4, %eax
 movl $1, %ebx
-movl $x1, %ecx
+movl $0, %ecx
 movl $14, %edx
 int $0x80
 movl $1, %eax

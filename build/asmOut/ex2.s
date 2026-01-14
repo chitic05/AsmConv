@@ -7,7 +7,7 @@ ap: .long 0
 .global _start
 _start:
 movl n, %ecx
-movl $v, %edi
+movl $4, %edi
 movl n, %ebx
 movl $0, %ebx
 movl (%edi, %ebx, 4), %edx
@@ -38,7 +38,7 @@ movl n, %ebx
 movl $8, %ebx
 movl (%edi, %ebx, 4), %edx
 movl n, %ecx
-movl $v, %edi
+movl $4, %edi
 movl n, %ebx
 movl $0, %ebx
 movl (%edi, %ebx, 4), %edx

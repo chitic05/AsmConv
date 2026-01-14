@@ -419,10 +419,8 @@ namespace Instr{
         Operands::writeOperand(op_d, val);
         
         // If source or dest involves memory addressing, keep original instruction
-        // Also keep if source is immediate with $ (label addresses like $v)
         if(op_s.type == Operands::OperandType::ADDRESS || 
-           op_d.type == Operands::OperandType::ADDRESS ||
-           (op_s.type == Operands::OperandType::IMMEDIATE && src[0] == '$')){
+           op_d.type == Operands::OperandType::ADDRESS){
             if(size == 4)
                 out << "movl " << src << ", " << dest << '\n';
             else if(size == 2)
@@ -512,6 +510,11 @@ namespace Instr{
         val_d = val_d + 1;
         Operands::writeOperand(op_d, val_d);
         
+        if(val_d == 0){
+            flags[E] = 1;
+            flags[Z] = 1;
+        }
+        
         if(size == 4) out << "movl $" << val_d << ", " << dest << '\n';
         else if(size == 2) out << "movw $" << val_d << ", " << dest << '\n';
         else if(size == 1) out << "movb $" << val_d << ", " << dest << '\n';
@@ -523,6 +526,11 @@ namespace Instr{
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d - 1;
         Operands::writeOperand(op_d, val_d);
+        
+        if(val_d == 0){
+            flags[E] = 1;
+            flags[Z] = 1;
+        }
         
         if(size == 4) out << "movl $" << val_d << ", " << dest << '\n';
         else if(size == 2) out << "movw $" << val_d << ", " << dest << '\n';
@@ -597,10 +605,8 @@ namespace Instr{
         op_s = getOperandFromString(src, size);
         op_d = getOperandFromString(dest, size);
         resetFlags();
-        // lea loads the address of the source into the destination
         if(op_s.type == Operands::OperandType::ADDRESS){
             Operands::writeOperand(op_d, op_s.address);
-            // Convert lea to movl with $label
             if(size == 4)
                 out << "movl $" << src << ", " << dest << '\n';
             else if(size == 2)
@@ -622,16 +628,14 @@ namespace Instr{
         };
         Operands::writeOperand(stack, val_s);
         
-        // Output stack pointer decrement and store
-        out << "subl $4, %esp\n";
         if(size == 4){
-            out << "movl " << src << ", 0(%esp)\n";
+            out << "pushl " << src << "\n";
         }
         else if(size == 2){
-            out << "movw " << src << ", 0(%esp)\n";
+            out << "pushw " << src << "\n";
         }
         else if(size == 1){
-            out << "movb " << src << ", 0(%esp)\n";
+            out << "pushb " << src << "\n";
         }
     }
 
@@ -647,17 +651,15 @@ namespace Instr{
         Operands::writeOperand(op_d, val_d);
         Registers::esp += 4;
         
-        // Output load from stack then pointer increment
         if(size == 4){
-            out << "movl 0(%esp), " << dest << '\n';
+            out << "popl " << dest << "\n";
         }
         else if(size == 2){
-            out << "movw 0(%esp), " << dest << '\n';
+            out << "popw " << dest << "\n";
         }
         else if(size == 1){
-            out << "movb 0(%esp), " << dest << '\n';
+            out << "popb " << dest << "\n";
         }
-        out << "addl $4, %esp\n";
     }
 
     void test(std::string src, std::string dest, std::ofstream& out, uint8_t size){
@@ -947,7 +949,6 @@ int main(int argc, char* argv[]){
                     continue;
                 }
                 
-                // Extract instruction
                 std::istringstream instructionExtractor(line);
                 std::string instruction;
                 instructionExtractor >> instruction;
@@ -1221,7 +1222,14 @@ Operands::Operand getOperandFromString(std::string str, uint8_t size){
         if(Mem::labels.count(l)){
             return {.type=Operands::OperandType::IMMEDIATE, .imm=static_cast<int32_t>(Mem::labels[l].address)};
         }else{
-            return {.type=Operands::OperandType::IMMEDIATE, .imm=static_cast<int32_t>(std::stoul(l, nullptr, 0))};
+            // Handle binary literals with 0b prefix
+            int32_t value;
+            if(l.length() > 2 && l[0] == '0' && (l[1] == 'b' || l[1] == 'B')){
+                value = static_cast<int32_t>(std::stoul(l.substr(2), nullptr, 2));
+            } else {
+                value = static_cast<int32_t>(std::stoul(l, nullptr, 0));
+            }
+            return {.type=Operands::OperandType::IMMEDIATE, .imm=value};
         }
     }else if(str[0] == '%'){
         return {.type=Operands::OperandType::REGISTER, .regTag=Registers::stringToTag[str]};

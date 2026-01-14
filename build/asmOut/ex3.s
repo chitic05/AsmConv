@@ -31,17 +31,12 @@ movl $0, %eax
 movl $5, %edx
 movl $14, s
 movl $0, %ecx
-subl $4, %esp
-movl s, 0(%esp)
-subl $4, %esp
-movl $formatAfSuma, 0(%esp)
+pushl s
+pushl $formatAfSuma
 call printf
-movl 0(%esp), %ebx
-addl $4, %esp
-movl 0(%esp), %ebx
-addl $4, %esp
-subl $4, %esp
-movl stdout, 0(%esp)
+popl %ebx
+popl %ebx
+pushl stdout
 call fflush
 addl $4, %esp
 movl $1, %eax
