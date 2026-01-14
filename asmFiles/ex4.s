@@ -1,47 +1,44 @@
 .data
 v: .long 26, 12, 3, 56, 3, 18, 27, 35, 15
 n: .long 9
-frecv: .space 404
-formatAfisare: .asciz "Numarul care apare cele mai multe ori: %d\n"
+max1: .long 0
+max2: .long 0
+formatAf: .ascii "%ld\n"
 .text
 .global _start
-.extern printf
 _start:
 movl n, %ecx
 lea v, %edi
 xorl %eax, %eax
-et_tablou_frecv:
-cmp $0, %ecx
-je et_parcurgere
-movl (%edi,%eax,4), %ebx
-lea frecv, %esi
-movl (%esi,%ebx,4), %edx
-addl $1, %edx
-movl %edx, (%esi,%ebx,4)
-incl %eax
-decl %ecx
-jmp et_tablou_frecv
 et_parcurgere:
-movl $0, %eax
-movl $0, %ebx
-movl $0, %edx
-lea frecv, %esi
-et_cautare:
-cmp $100, %eax
-jg afisare
-movl (%esi,%eax,4), %ecx
-cmp %edx, %ecx
+cmp $0, %ecx
+je et_afisare
+movl (%edi,%eax,4), %edx
+movl max1, %ebx
+cmp %ebx, %edx
+jle verifica_max2
+movl %ebx, max2
+movl %edx, max1
+jmp et_cont_parcurgere
+verifica_max2:
+movl max2, %ebx
+cmp %ebx, %edx
 jle et_cont_parcurgere
-movl %ecx, %edx
-movl %eax, %ebx
+movl max1, %esi
+cmp %esi, %edx
+jge et_cont_parcurgere
+movl %edx, max2
 et_cont_parcurgere:
 incl %eax
-jmp et_cautare
-afisare:
-pushl %ebx
-pushl $formatAfisare
+decl %ecx
+jmp et_parcurgere
+et_afisare:
+movl max2, %edx
+pushl max2
+pushl $formatAf
 call printf
-addl $8, %esp
+popl %ebx
+popl %ebx
 et_exit:
 movl $1, %eax
 xorl %ebx, %ebx

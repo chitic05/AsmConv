@@ -1,38 +1,30 @@
 .data
-n: .long 9
-v: .long 12, 15, 5, 15, 4, 1, 7, 15, 1
-maxim: .long 0
-ap: .long 0
+n: .long 5234
+s: .long 0
+formatAfSuma: .ascii "Suma cifrelor numarului este: %ld\n"
 .text
 .global _start
 _start:
 movl n, %ecx
-movl $v, %edi
+movl $10, %ebx
 et_loop:
-movl n, %ebx
-subl %ecx, %ebx
-movl (%edi, %ebx, 4), %edx
-cmp maxim, %edx
-jg et_max_nou
-loop et_loop
-jmp cont_max
-et_max_nou:
-movl %edx, maxim
-loop et_loop
-cont_max:
-movl n, %ecx
-movl $v, %edi
-loop_ap:
-movl n, %ebx
-subl %ecx, %ebx
-movl (%edi, %ebx, 4), %edx
-cmp maxim, %edx
-je et_egale
-loop loop_ap
-jmp et_exit
-et_egale:
-incl ap
-loop loop_ap
+cmp $0, %ecx
+je et_afisare
+movl %ecx, %eax
+xorl %edx, %edx
+divl %ebx
+addl %edx, s
+movl %eax, %ecx
+jmp et_loop
+et_afisare:
+pushl s
+push $formatAfSuma
+call printf
+popl %ebx
+popl %ebx
+pushl stdout
+call fflush
+addl $4, %esp
 et_exit:
 movl $1, %eax
 xorl %ebx, %ebx

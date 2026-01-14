@@ -224,12 +224,10 @@ namespace Instr{
 
         int32_t sum = val_s + val_d;
         Operands::writeOperand(op_d, sum);
-        if(size == 4)
-            out << "mov" << " $" << sum << ", " << dest << '\n';
-        else if(size == 2)
-            out << "movw" << " $" << sum << ", " << dest << '\n';
-        else if(size == 1)
-            out << "movb" << " $" << sum << ", " << dest << '\n';
+        
+        if(size == 4) out << "movl $" << sum << ", " << dest << '\n';
+        else if(size == 2) out << "movw $" << sum << ", " << dest << '\n';
+        else if(size == 1) out << "movb $" << sum << ", " << dest << '\n';
     }
 
     void sub(std::string src, std::string dest, std::ofstream& out, uint8_t size){
@@ -245,12 +243,16 @@ namespace Instr{
 
         int32_t sub = val_d - val_s;
         Operands::writeOperand(op_d, sub);
-        if(size == 4)
-            out << "mov" << " $" << sub << ", " << dest << '\n';
-        else if(size == 2)
-            out << "movw" << " $" << sub << ", " << dest << '\n';
-        else if(size == 1)
-            out << "movb" << " $" << sub << ", " << dest << '\n';
+        
+        if(op_d.type == Operands::OperandType::ADDRESS){
+            if(size == 4) out << "subl " << src << ", " << dest << '\n';
+            else if(size == 2) out << "subw " << src << ", " << dest << '\n';
+            else if(size == 1) out << "subb " << src << ", " << dest << '\n';
+        } else {
+            if(size == 4) out << "movl $" << sub << ", " << dest << '\n';
+            else if(size == 2) out << "movw $" << sub << ", " << dest << '\n';
+            else if(size == 1) out << "movb $" << sub << ", " << dest << '\n';
+        }
     }
     void div(std::string src, std::ofstream& out){
         Operands::Operand op_s, eax, edx;
@@ -277,8 +279,8 @@ namespace Instr{
         Operands::writeOperand(eax, cat);
         Operands::writeOperand(edx, rest);
         
-        out << "mov" << " $" << cat << ", " << "%eax" << '\n';
-        out << "mov" << " $" << rest << ", " << "%edx" << '\n';
+        out << "movl" << " $" << cat << ", " << "%eax" << '\n';
+        out << "movl" << " $" << rest << ", " << "%edx" << '\n';
     }
 
     void mul(std::string src, std::ofstream& out){
@@ -308,8 +310,8 @@ namespace Instr{
         Operands::writeOperand(eax, low);
         Operands::writeOperand(edx, high);
         
-        out << "mov" << " $" << low << ", " << "%eax" << '\n';
-        out << "mov" << " $" << high << ", " << "%edx" << '\n';
+        out << "movl" << " $" << low << ", " << "%eax" << '\n';
+        out << "movl" << " $" << high << ", " << "%edx" << '\n';
     }
 
     void divw(std::string src, std::ofstream& out){
@@ -413,15 +415,29 @@ namespace Instr{
         Operands::Operand op_s, op_d;
         op_s = getOperandFromString(src, size);
         op_d = getOperandFromString(dest, size);
-        // MOV does not affect flags
         auto val = Operands::readOperand(op_s);
         Operands::writeOperand(op_d, val);
-        if(size == 4)
-            out << "mov" << " $" << val << ", " << dest << '\n';
-        else if(size == 2)
-            out << "movw" << " $" << val << ", " << dest << '\n';
-        else if(size == 1)
-            out << "movb" << " $" << val << ", " << dest << '\n';
+        
+        // If source or dest involves memory addressing, keep original instruction
+        // Also keep if source is immediate with $ (label addresses like $v)
+        if(op_s.type == Operands::OperandType::ADDRESS || 
+           op_d.type == Operands::OperandType::ADDRESS ||
+           (op_s.type == Operands::OperandType::IMMEDIATE && src[0] == '$')){
+            if(size == 4)
+                out << "movl " << src << ", " << dest << '\n';
+            else if(size == 2)
+                out << "movw " << src << ", " << dest << '\n';
+            else if(size == 1)
+                out << "movb " << src << ", " << dest << '\n';
+        } else {
+            // Both are registers or immediates - output computed value
+            if(size == 4)
+                out << "movl" << " $" << val << ", " << dest << '\n';
+            else if(size == 2)
+                out << "movw" << " $" << val << ", " << dest << '\n';
+            else if(size == 1)
+                out << "movb" << " $" << val << ", " << dest << '\n';
+        }
     }
 
 
@@ -435,12 +451,16 @@ namespace Instr{
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d | val_s;
         Operands::writeOperand(op_d, val_d);
-        if(size == 4)
-            out << "mov" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 2)
-            out << "movw" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 1)
-            out << "movb" << " $" << val_d << ", " << dest << '\n';
+        
+        if(op_d.type == Operands::OperandType::ADDRESS){
+            if(size == 4) out << "orl " << src << ", " << dest << '\n';
+            else if(size == 2) out << "orw " << src << ", " << dest << '\n';
+            else if(size == 1) out << "orb " << src << ", " << dest << '\n';
+        } else {
+            if(size == 4) out << "movl $" << val_d << ", " << dest << '\n';
+            else if(size == 2) out << "movw $" << val_d << ", " << dest << '\n';
+            else if(size == 1) out << "movb $" << val_d << ", " << dest << '\n';
+        }
     }
     void _xor(std::string src, std::string dest, std::ofstream& out, uint8_t size){
         Operands::Operand op_s, op_d;
@@ -451,12 +471,16 @@ namespace Instr{
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d ^ val_s;
         Operands::writeOperand(op_d, val_d);
-        if(size == 4)
-            out << "mov" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 2)
-            out << "movw" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 1)
-            out << "movb" << " $" << val_d << ", " << dest << '\n';
+        
+        if(op_d.type == Operands::OperandType::ADDRESS){
+            if(size == 4) out << "xorl " << src << ", " << dest << '\n';
+            else if(size == 2) out << "xorw " << src << ", " << dest << '\n';
+            else if(size == 1) out << "xorb " << src << ", " << dest << '\n';
+        } else {
+            if(size == 4) out << "movl $" << val_d << ", " << dest << '\n';
+            else if(size == 2) out << "movw $" << val_d << ", " << dest << '\n';
+            else if(size == 1) out << "movb $" << val_d << ", " << dest << '\n';
+        }
     }
     void _and(std::string src, std::string dest, std::ofstream& out, uint8_t size){
         Operands::Operand op_s, op_d;
@@ -467,12 +491,16 @@ namespace Instr{
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d & val_s;
         Operands::writeOperand(op_d, val_d);
-        if(size == 4)
-            out << "mov" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 2)
-            out << "movw" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 1)
-            out << "movb" << " $" << val_d << ", " << dest << '\n';
+        
+        if(op_d.type == Operands::OperandType::ADDRESS){
+            if(size == 4) out << "andl " << src << ", " << dest << '\n';
+            else if(size == 2) out << "andw " << src << ", " << dest << '\n';
+            else if(size == 1) out << "andb " << src << ", " << dest << '\n';
+        } else {
+            if(size == 4) out << "movl $" << val_d << ", " << dest << '\n';
+            else if(size == 2) out << "movw $" << val_d << ", " << dest << '\n';
+            else if(size == 1) out << "movb $" << val_d << ", " << dest << '\n';
+        }
 
     }
 
@@ -483,12 +511,10 @@ namespace Instr{
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d + 1;
         Operands::writeOperand(op_d, val_d);
-        if(size == 4)
-            out << "mov" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 2)
-            out << "movw" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 1)
-            out << "movb" << " $" << val_d << ", " << dest << '\n';
+        
+        if(size == 4) out << "movl $" << val_d << ", " << dest << '\n';
+        else if(size == 2) out << "movw $" << val_d << ", " << dest << '\n';
+        else if(size == 1) out << "movb $" << val_d << ", " << dest << '\n';
     }
     void dec(std::string dest, std::ofstream& out, uint8_t size){
         Operands::Operand op_d;
@@ -497,12 +523,10 @@ namespace Instr{
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d - 1;
         Operands::writeOperand(op_d, val_d);
-        if(size == 4)
-            out << "mov" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 2)
-            out << "movw" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 1)
-            out << "movb" << " $" << val_d << ", " << dest << '\n';
+        
+        if(size == 4) out << "movl $" << val_d << ", " << dest << '\n';
+        else if(size == 2) out << "movw $" << val_d << ", " << dest << '\n';
+        else if(size == 1) out << "movb $" << val_d << ", " << dest << '\n';
     }
 
     void shl(std::string src, std::string dest, std::ofstream& out, uint8_t size){
@@ -514,12 +538,16 @@ namespace Instr{
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d << val_s;
         Operands::writeOperand(op_d, val_d);
-        if(size == 4)
-            out << "mov" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 2)
-            out << "movw" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 1)
-            out << "movb" << " $" << val_d << ", " << dest << '\n';
+        
+        if(op_d.type == Operands::OperandType::ADDRESS){
+            if(size == 4) out << "shll " << src << ", " << dest << '\n';
+            else if(size == 2) out << "shlw " << src << ", " << dest << '\n';
+            else if(size == 1) out << "shlb " << src << ", " << dest << '\n';
+        } else {
+            if(size == 4) out << "movl $" << val_d << ", " << dest << '\n';
+            else if(size == 2) out << "movw $" << val_d << ", " << dest << '\n';
+            else if(size == 1) out << "movb $" << val_d << ", " << dest << '\n';
+        }
     }
 
     void shr(std::string src, std::string dest, std::ofstream& out, uint8_t size){
@@ -531,12 +559,16 @@ namespace Instr{
         auto val_d = Operands::readOperand(op_d);
         val_d = static_cast<int32_t>(static_cast<uint32_t>(val_d) >> val_s);
         Operands::writeOperand(op_d, val_d);
-        if(size == 4)
-            out << "mov" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 2)
-            out << "movw" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 1)
-            out << "movb" << " $" << val_d << ", " << dest << '\n';
+        
+        if(op_d.type == Operands::OperandType::ADDRESS){
+            if(size == 4) out << "shrl " << src << ", " << dest << '\n';
+            else if(size == 2) out << "shrw " << src << ", " << dest << '\n';
+            else if(size == 1) out << "shrb " << src << ", " << dest << '\n';
+        } else {
+            if(size == 4) out << "movl $" << val_d << ", " << dest << '\n';
+            else if(size == 2) out << "movw $" << val_d << ", " << dest << '\n';
+            else if(size == 1) out << "movb $" << val_d << ", " << dest << '\n';
+        }
     }
 
     void sar(std::string src, std::string dest, std::ofstream& out, uint8_t size){
@@ -548,12 +580,16 @@ namespace Instr{
         auto val_d = Operands::readOperand(op_d);
         val_d = val_d >> val_s;
         Operands::writeOperand(op_d, val_d);
-        if(size == 4)
-            out << "mov" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 2)
-            out << "movw" << " $" << val_d << ", " << dest << '\n';
-        else if(size == 1)
-            out << "movb" << " $" << val_d << ", " << dest << '\n';
+        
+        if(op_d.type == Operands::OperandType::ADDRESS){
+            if(size == 4) out << "sarl " << src << ", " << dest << '\n';
+            else if(size == 2) out << "sarw " << src << ", " << dest << '\n';
+            else if(size == 1) out << "sarb " << src << ", " << dest << '\n';
+        } else {
+            if(size == 4) out << "movl $" << val_d << ", " << dest << '\n';
+            else if(size == 2) out << "movw $" << val_d << ", " << dest << '\n';
+            else if(size == 1) out << "movb $" << val_d << ", " << dest << '\n';
+        }
     }
 
     void lea(std::string src, std::string dest, std::ofstream& out, uint8_t size){
@@ -564,19 +600,19 @@ namespace Instr{
         // lea loads the address of the source into the destination
         if(op_s.type == Operands::OperandType::ADDRESS){
             Operands::writeOperand(op_d, op_s.address);
+            // Convert lea to movl with $label
             if(size == 4)
-                out << "mov" << " $" << op_s.address << ", " << dest << '\n';
+                out << "movl $" << src << ", " << dest << '\n';
             else if(size == 2)
-                out << "movw" << " $" << op_s.address << ", " << dest << '\n';
+                out << "movw $" << src << ", " << dest << '\n';
             else if(size == 1)
-                out << "movb" << " $" << op_s.address << ", " << dest << '\n';
+                out << "movb $" << src << ", " << dest << '\n';
         }
     }
 
     void push(std::string src, std::ofstream& out, uint8_t size){
         Operands::Operand op_s;
         op_s = getOperandFromString(src, size);
-        // PUSH does not affect flags
         auto val_s = Operands::readOperand(op_s);
         Registers::esp -= 4;
         Operands::Operand stack ={
@@ -585,24 +621,23 @@ namespace Instr{
             .address=(uint32_t)Registers::esp
         };
         Operands::writeOperand(stack, val_s);
+        
+        // Output stack pointer decrement and store
+        out << "subl $4, %esp\n";
         if(size == 4){
-            out << "mov" << " $" << Registers::esp << ", " << "%esp" << '\n';
-            out << "mov" << " $" << val_s << ", " << "0(%esp)" << '\n';
+            out << "movl " << src << ", 0(%esp)\n";
         }
         else if(size == 2){
-            out << "mov" << " $" << Registers::esp << ", " << "%esp" << '\n';
-            out << "movw" << " $" << val_s << ", " << "0(%esp)" << '\n';
+            out << "movw " << src << ", 0(%esp)\n";
         }
         else if(size == 1){
-            out << "mov" << " $" << Registers::esp << ", " << "%esp" << '\n';            
-            out << "movb" << " $" << val_s << ", " << "0(%esp)" << '\n';
+            out << "movb " << src << ", 0(%esp)\n";
         }
     }
 
     void pop(std::string dest, std::ofstream& out, uint8_t size){
         Operands::Operand op_d;
         op_d = getOperandFromString(dest, size);
-        // POP does not affect flags
         Operands::Operand stack ={
             .type=Operands::OperandType::ADDRESS,
             .size=4,
@@ -611,18 +646,18 @@ namespace Instr{
         auto val_d = Operands::readOperand(stack);
         Operands::writeOperand(op_d, val_d);
         Registers::esp += 4;
+        
+        // Output load from stack then pointer increment
         if(size == 4){
-            out << "mov" << " $" << Registers::esp << ", " << "%esp" << '\n';
-            out << "mov" << " $" << val_d << ", " << "0(%esp)" << '\n';
+            out << "movl 0(%esp), " << dest << '\n';
         }
         else if(size == 2){
-            out << "mov" << " $" << Registers::esp << ", " << "%esp" << '\n';
-            out << "movw" << " $" << val_d << ", " << "0(%esp)" << '\n';
+            out << "movw 0(%esp), " << dest << '\n';
         }
         else if(size == 1){
-            out << "mov" << " $" << Registers::esp << ", " << "%esp" << '\n';            
-            out << "movb" << " $" << val_d << ", " << "0(%esp)" << '\n';
+            out << "movb 0(%esp), " << dest << '\n';
         }
+        out << "addl $4, %esp\n";
     }
 
     void test(std::string src, std::string dest, std::ofstream& out, uint8_t size){
@@ -649,7 +684,6 @@ namespace Instr{
         
         auto val_s = Operands::readOperand(op_s);
         auto val_d = Operands::readOperand(op_d);
-        // CMP performs dest - src in AT&T syntax
         if(val_d <= val_s)
             flags[LE] = 1;
         if(val_d >= val_s)
@@ -682,6 +716,11 @@ namespace Instr{
         }
     }
     void call(std::string targetLabel, std::ofstream& out){
+        if(instr_labels.count(targetLabel) == 0){
+            out << "call " << targetLabel << '\n';
+            return;
+        }
+        
         uint32_t returnAddr = static_cast<uint32_t>(Registers::eip + 1);
         Registers::esp -= 4;
         Operands::Operand stackSlot = {
@@ -704,10 +743,8 @@ namespace Instr{
         Registers::esp += 4;
 
         if(returnAddr < Instr::instructions.size()){
-            // Set eip so post-iteration increment lands on the return address
             Registers::eip = static_cast<int32_t>(returnAddr) - 1;
         } else {
-            // Invalid address: end execution
             Registers::eip = Instr::instructions.size();
         }
     }
@@ -728,6 +765,7 @@ int main(int argc, char* argv[]){
                 std::cerr << "File " << argv[i] << " doesn't exist";
                 continue;
             }
+            std::cout << argv[i] << ": " << '\n';
 
             std::string outputFile = "./asmOut/";
             outputFile = outputFile + argv[i];
@@ -745,6 +783,14 @@ int main(int argc, char* argv[]){
             std::string line;
             uint32_t instr_counter = 0;
             while(std::getline(in, line)){
+                // Remove comments (starting with # or ;)
+                size_t commentPos = line.find_first_of("#;");
+                if(commentPos != std::string::npos){
+                    line = line.substr(0, commentPos);
+                }
+                // Trim trailing whitespace
+                line.erase(line.find_last_not_of(" \t\r\n") + 1);
+                
                 if(line != ""){
                     if(line == ".data"){
                         section = DATA;
@@ -754,6 +800,11 @@ int main(int argc, char* argv[]){
                     
                     if(line== ".text"){
                         section = TEXT;
+                        out << line << '\n';
+                        continue;
+                    }
+                    
+                    if(line.find(".extern") == 0){
                         out << line << '\n';
                         continue;
                     }
@@ -780,13 +831,23 @@ int main(int argc, char* argv[]){
                             size = 1;
                         else if(type == ".word")
                             size = 2;
-                        else if(type == ".long" || type == ".space")
+                        else if(type == ".long")
                             size = 4;
+                        else if(type == ".space")
+                            size = 1;
 
                         Mem::labels[labelName] = {size, address};
-                    
-                        std::cout << labelName << ":";
-                        std::cout << Mem::labels[labelName].address << '\n';
+                        
+                        if(type == ".space"){
+                            lineWords >> value;
+                            uint32_t numBytes = static_cast<uint32_t>(std::stoul(value, nullptr, 0));
+                            for(uint32_t i = 0; i < numBytes; i++){
+                                Mem::memory[address + i] = 0;
+                            }
+                            Mem::memoryPeak += numBytes;
+                            continue; 
+                        }
+                        
                         lineWords >> value;
                         if (value.front() == '"') {
                             std::string temp;
@@ -852,7 +913,6 @@ int main(int argc, char* argv[]){
                                 Instr::instructions.push_back(line+'\n');
                                 line.pop_back();
                                 Instr::instr_labels[line] = instr_counter;
-                                std::cout << line << ':' << instr_counter << '\n';
                                 instr_counter++;
                             }else{
                                 Instr::instructions.push_back(line+'\n');
@@ -865,14 +925,20 @@ int main(int argc, char* argv[]){
                 
             }
             
-            Instr::instructions.insert(Instr::instructions.begin() + Instr::instr_labels[Instr::currentLabel] + 1, "movl $" + std::to_string(MEMSIZE) + ", %esp\n");
             out << Instr::currentLabel+":" << '\n';
             Registers::eip = Instr::instr_labels[Instr::currentLabel];
             while(Registers::eip< Instr::instructions.size()){
 
                 std::string line = Instr::instructions[Registers::eip];
                 std::string originalLine = line;
-
+            
+                // If line contains %esp, output it as-is
+                if(line.find("%esp") != std::string::npos){
+                    out << line;
+                    Registers::eip++;
+                    continue;
+                }
+            
                 if(!line.empty() && line.back()=='\n') line.pop_back();
                 if(!line.empty() && line.back()==':'){
                     line.pop_back();
@@ -894,8 +960,18 @@ int main(int argc, char* argv[]){
                 // Remove leading spaces
                 operandsStr.erase(0, operandsStr.find_first_not_of(" \t"));
                 
-                // Find the last comma to split src and dest
-                size_t lastComma = operandsStr.rfind(',');
+                // Find the comma that separates operands (not inside parentheses)
+                size_t lastComma = std::string::npos;
+                int parenDepth = 0;
+                for(size_t i = operandsStr.length(); i-- > 0; ){
+                    if(operandsStr[i] == ')') parenDepth++;
+                    else if(operandsStr[i] == '(') parenDepth--;
+                    else if(operandsStr[i] == ',' && parenDepth == 0){
+                        lastComma = i;
+                        break;
+                    }
+                }
+                
                 if(lastComma != std::string::npos){
                     src = operandsStr.substr(0, lastComma);
                     dest = operandsStr.substr(lastComma + 1);
