@@ -9,7 +9,7 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${command:cmake.launchTargetPath}",
-      "args": ["main.s"], // <--- Specific args here
+      "args": ["ex4.s"], // <--- Specific args here
       "cwd": "${workspaceFolder}",
       "MIMode": "gdb"
     },
