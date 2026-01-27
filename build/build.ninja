@@ -11,7 +11,7 @@
 # =============================================================================
 
 # =============================================================================
-# Project: AsmConv
+# Project: MovFuscator
 # Configurations: Debug
 # =============================================================================
 
@@ -41,36 +41,36 @@ include CMakeFiles/rules.ninja
 
 cmake_ninja_workdir = /home/david/Altele/Proiecte/cpp/AsmConv/build/
 # =============================================================================
-# Object build statements for EXECUTABLE target AsmConv
+# Object build statements for EXECUTABLE target MovFuscator
 
 
 #############################################
-# Order-only phony target for AsmConv
+# Order-only phony target for MovFuscator
 
-build cmake_object_order_depends_target_AsmConv: phony || CMakeFiles/AsmConv.dir
+build cmake_object_order_depends_target_MovFuscator: phony || CMakeFiles/MovFuscator.dir
 
-build CMakeFiles/AsmConv.dir/src/main.cpp.o: CXX_COMPILER__AsmConv_unscanned_Debug /home/david/Altele/Proiecte/cpp/AsmConv/src/main.cpp || cmake_object_order_depends_target_AsmConv
-  DEP_FILE = CMakeFiles/AsmConv.dir/src/main.cpp.o.d
+build CMakeFiles/MovFuscator.dir/src/main.cpp.o: CXX_COMPILER__MovFuscator_unscanned_Debug /home/david/Altele/Proiecte/cpp/AsmConv/src/main.cpp || cmake_object_order_depends_target_MovFuscator
+  DEP_FILE = CMakeFiles/MovFuscator.dir/src/main.cpp.o.d
   FLAGS = -g -std=c++17
   INCLUDES = -I/home/david/Altele/Proiecte/cpp/AsmConv/includes
-  OBJECT_DIR = CMakeFiles/AsmConv.dir
-  OBJECT_FILE_DIR = CMakeFiles/AsmConv.dir/src
+  OBJECT_DIR = CMakeFiles/MovFuscator.dir
+  OBJECT_FILE_DIR = CMakeFiles/MovFuscator.dir/src
 
 
 # =============================================================================
-# Link build statements for EXECUTABLE target AsmConv
+# Link build statements for EXECUTABLE target MovFuscator
 
 
 #############################################
-# Link the executable AsmConv
+# Link the executable MovFuscator
 
-build AsmConv: CXX_EXECUTABLE_LINKER__AsmConv_Debug CMakeFiles/AsmConv.dir/src/main.cpp.o
+build MovFuscator: CXX_EXECUTABLE_LINKER__MovFuscator_Debug CMakeFiles/MovFuscator.dir/src/main.cpp.o
   FLAGS = -g
-  OBJECT_DIR = CMakeFiles/AsmConv.dir
+  OBJECT_DIR = CMakeFiles/MovFuscator.dir
   POST_BUILD = :
   PRE_LINK = :
-  TARGET_FILE = AsmConv
-  TARGET_PDB = AsmConv.dbg
+  TARGET_FILE = MovFuscator
+  TARGET_PDB = MovFuscator.dbg
 
 
 #############################################
@@ -119,7 +119,7 @@ build CMakeFiles/copy_resources | ${cmake_ninja_workdir}CMakeFiles/copy_resource
 #############################################
 # Folder: /home/david/Altele/Proiecte/cpp/AsmConv/build
 
-build all: phony AsmConv copy_resources
+build all: phony MovFuscator copy_resources
 
 # =============================================================================
 # Built-in targets

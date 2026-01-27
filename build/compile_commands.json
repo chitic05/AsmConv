@@ -1,8 +1,8 @@
 [
 {
   "directory": "/home/david/Altele/Proiecte/cpp/AsmConv/build",
-  "command": "/usr/bin/g++ -I/home/david/Altele/Proiecte/cpp/AsmConv/includes -g -std=c++17 -o CMakeFiles/AsmConv.dir/src/main.cpp.o -c /home/david/Altele/Proiecte/cpp/AsmConv/src/main.cpp",
+  "command": "/usr/bin/g++ -I/home/david/Altele/Proiecte/cpp/AsmConv/includes -g -std=c++17 -o CMakeFiles/MovFuscator.dir/src/main.cpp.o -c /home/david/Altele/Proiecte/cpp/AsmConv/src/main.cpp",
   "file": "/home/david/Altele/Proiecte/cpp/AsmConv/src/main.cpp",
-  "output": "CMakeFiles/AsmConv.dir/src/main.cpp.o"
+  "output": "CMakeFiles/MovFuscator.dir/src/main.cpp.o"
 }
 ]

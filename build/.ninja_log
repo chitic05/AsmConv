@@ -1,11 +1,6 @@
 # ninja log v5
-2705	2941	1768430041410657794	AsmConv	8f7ecb02b7c33bb6
-27	2705	1768430041176042764	CMakeFiles/AsmConv.dir/src/main.cpp.o	d0002f061b2cdc94
-3	25	0	/home/david/Altele/Proiecte/cpp/AsmConv/build/CMakeFiles/cmake.verify_globs	8a2c5a8ec224726c
-27	69	0	CMakeFiles/copy_resources	fe6c099fa55f6d40
-27	69	0	/home/david/Altele/Proiecte/cpp/AsmConv/build/CMakeFiles/copy_resources	fe6c099fa55f6d40
-2	22	0	/home/david/Altele/Proiecte/cpp/AsmConv/build/CMakeFiles/cmake.verify_globs	8a2c5a8ec224726c
-24	66	0	CMakeFiles/copy_resources	fe6c099fa55f6d40
-24	66	0	/home/david/Altele/Proiecte/cpp/AsmConv/build/CMakeFiles/copy_resources	fe6c099fa55f6d40
-24	2570	1768431003682637058	CMakeFiles/AsmConv.dir/src/main.cpp.o	d0002f061b2cdc94
-2570	2795	1768431003908844253	AsmConv	8f7ecb02b7c33bb6
+2	24	0	/home/david/Altele/Proiecte/cpp/AsmConv/build/CMakeFiles/cmake.verify_globs	8a2c5a8ec224726c
+24	2517	1769557175312001593	CMakeFiles/MovFuscator.dir/src/main.cpp.o	5417913163ef093
+28	68	0	CMakeFiles/copy_resources	fe6c099fa55f6d40
+28	68	0	/home/david/Altele/Proiecte/cpp/AsmConv/build/CMakeFiles/copy_resources	fe6c099fa55f6d40
+2517	2691	1769557175487702806	MovFuscator	f45529b242c0a483

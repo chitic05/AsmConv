@@ -210,6 +210,39 @@ namespace Instr{
     std::vector<std::string> instructions;
     
     std::unordered_map<std::string, uint32_t> instr_labels;
+    
+    std::string currentLabel;
+    
+    void resetAll(){
+        // Reset all instruction state
+        flags[L] = 0;
+        flags[LE] = 0;
+        flags[E] = 0;
+        flags[GE] = 0;
+        flags[G] = 0;
+        flags[A] = 0;
+        flags[AE] = 0;
+        flags[Z] = 0;
+        instructions.clear();
+        instr_labels.clear();
+        currentLabel = "";
+        
+        // Reset registers
+        Registers::eax = 0;
+        Registers::ebx = 0;
+        Registers::ecx = 0;
+        Registers::edx = 0;
+        Registers::esi = 0;
+        Registers::edi = 0;
+        Registers::esp = MEMSIZE;
+        Registers::ebp = 0;
+        Registers::eip = 0;
+        
+        // Reset memory
+        std::fill(std::begin(Mem::memory), std::end(Mem::memory), 0);
+        Mem::memoryPeak = 0;
+        Mem::labels.clear();
+    }
 
     void add(std::string src, std::string dest, std::ofstream& out, uint8_t size){
         Operands::Operand op_s, op_d;
@@ -418,9 +451,16 @@ namespace Instr{
         auto val = Operands::readOperand(op_s);
         Operands::writeOperand(op_d, val);
         
-        // If source or dest involves memory addressing, keep original instruction
+        // Check if source is a label reference like $v, $label
+        bool isLabelRef = false;
+        if(src.length() > 1 && src[0] == '$'){
+            std::string labelPart = src.substr(1);
+            isLabelRef = (Mem::labels.count(labelPart) > 0);
+        }
+        
         if(op_s.type == Operands::OperandType::ADDRESS || 
-           op_d.type == Operands::OperandType::ADDRESS){
+           op_d.type == Operands::OperandType::ADDRESS ||
+           isLabelRef){
             if(size == 4)
                 out << "movl " << src << ", " << dest << '\n';
             else if(size == 2)
@@ -428,7 +468,7 @@ namespace Instr{
             else if(size == 1)
                 out << "movb " << src << ", " << dest << '\n';
         } else {
-            // Both are registers or immediates - output computed value
+            // Daca src e registru sau o valoare instanta sa scrie cu valoarea simulata
             if(size == 4)
                 out << "movl" << " $" << val << ", " << dest << '\n';
             else if(size == 2)
@@ -704,7 +744,6 @@ namespace Instr{
         if(static_cast<uint32_t>(val_d) >= static_cast<uint32_t>(val_s))
             flags[AE] = 1;
     }
-    std::string currentLabel;
     void jmp(std::string targetLabel, std::ofstream& out){
         Registers::eip = Instr::instr_labels[targetLabel];
         currentLabel = targetLabel;
@@ -715,11 +754,15 @@ namespace Instr{
         if(Registers::ecx != 0){
             Registers::eip = Instr::instr_labels[targetLabel];
             Instr::currentLabel = targetLabel;
+        } else {
+            // When loop doesn't jump, increment eip normally
+            Registers::eip++;
         }
     }
     void call(std::string targetLabel, std::ofstream& out){
         if(instr_labels.count(targetLabel) == 0){
             out << "call " << targetLabel << '\n';
+            Registers::eip++;  // For external calls, increment eip manually
             return;
         }
         
@@ -760,11 +803,14 @@ int main(int argc, char* argv[]){
 
     if(argc > 1){
         for(size_t i = 1; i<argc; i++){
+            // Reset cand citim un fisier nou
+            Instr::resetAll();
+            
             std::string inputFile = "./asmFiles/";
             inputFile = inputFile + argv[i];
             std::ifstream in(inputFile);
             if(!in){
-                std::cerr << "File " << argv[i] << " doesn't exist";
+                std::cerr << "File " << argv[i] << " doesn't exist!\n";
                 continue;
             }
             std::cout << argv[i] << ": " << '\n';
@@ -1126,53 +1172,81 @@ int main(int argc, char* argv[]){
                     Instr::cmp(src, dest, out, 1);
                 /*---------------------------------*/       
                 else if(instruction == "jl"){
-                    if(Instr::flags[Instr::L] == 1)
+                    if(Instr::flags[Instr::L] == 1){
                         Instr::jmp(src, out);
+                        continue;
+                    }
                 }
                 else if(instruction == "jle"){
-                    if(Instr::flags[Instr::LE] == 1)
+                    if(Instr::flags[Instr::LE] == 1){
                         Instr::jmp(src, out);
+                        continue;
+                    }
                 }
                 else if(instruction == "je"){
-                    if(Instr::flags[Instr::E] == 1)
+                    if(Instr::flags[Instr::E] == 1){
                         Instr::jmp(src, out);
+                        continue;
+                    }
                 }
                 else if(instruction == "jge"){
-                    if(Instr::flags[Instr::GE] == 1)
+                    if(Instr::flags[Instr::GE] == 1){
                         Instr::jmp(src, out);
+                        continue;
+                    }
                 }
                 else if(instruction == "jg"){
-                    if(Instr::flags[Instr::G] == 1)
+                    if(Instr::flags[Instr::G] == 1){
                         Instr::jmp(src, out);
+                        continue;
+                    }
                 }
                 else if(instruction == "ja"){
-                    if(Instr::flags[Instr::A] == 1)
+                    if(Instr::flags[Instr::A] == 1){
                         Instr::jmp(src, out);
+                        continue;
+                    }
                 }
                 else if(instruction == "jae"){
-                    if(Instr::flags[Instr::AE] == 1)
+                    if(Instr::flags[Instr::AE] == 1){
                         Instr::jmp(src, out);
+                        continue;
+                    }
                 }
                 else if(instruction == "jne"){
-                    if(Instr::flags[Instr::E] == 0)
+                    if(Instr::flags[Instr::E] == 0){
                         Instr::jmp(src, out);
+                        continue;
+                    }
                 }
                 else if(instruction == "jz"){
-                    if(Instr::flags[Instr::Z] == 1)
+                    if(Instr::flags[Instr::Z] == 1){
                         Instr::jmp(src, out);
+                        continue;
+                    }
                 }
                 else if(instruction == "jnz"){
-                    if(Instr::flags[Instr::Z] == 0)
+                    if(Instr::flags[Instr::Z] == 0){
                         Instr::jmp(src, out);
+                        continue;
+                    }
                 }
-                else if(instruction == "jmp")
+                else if(instruction == "jmp"){
                     Instr::jmp(src, out);
-                else if(instruction == "loop")
+                    continue;
+                }
+                else if(instruction == "loop"){
                     Instr::loop(src, out);
-                else if(instruction == "call")
+                    continue;  
+                }
+                else if(instruction == "call"){
                     Instr::call(src, out);
-                else if(instruction == "ret")
+                    continue;
+                }
+                else if(instruction == "ret"){
                     Instr::ret(out);
+                    continue;
+                }
                 /*---------------------------------*/
                 else if(instruction == "sar")
                     Instr::sar(src, dest, out, 4);

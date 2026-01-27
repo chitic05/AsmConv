@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/AsmConv.dir/src/main.cpp.o -o AsmConv 
