@@ -15,6 +15,21 @@ Interpreter de cod Assembly x86 (AT&T) în C++ care simulează execuția instruc
 
 ---
 
+## Structura proiectului
+
+### Cod sursă
+- **`src/main.cpp`**
+
+### Fișiere generate
+- **`build/MovFuscator`** - executabil debug (pentru dezvoltare)
+- **`out/release/MovFuscator`** - executabil release (cu optimizări de la compilator)
+
+### Fișiere Assembly (input/output)
+- **`out/release/asmFiles/`** - fișiere de intrare (ex1.s - ex17.s, main.s)
+- **`out/release/asmOut/`** - fișiere de ieșire generate (create automat la rulare)
+
+---
+
 ## Utilizare
 
 ```bash
