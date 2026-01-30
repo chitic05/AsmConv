@@ -14,15 +14,6 @@
 # EXTERNAL cache entries
 ########################
 
-//Value Computed by CMake
-AsmCon_BINARY_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv/build
-
-//Value Computed by CMake
-AsmCon_IS_TOP_LEVEL:STATIC=ON
-
-//Value Computed by CMake
-AsmCon_SOURCE_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv
-
 BUILD_SHARED_LIBS:BOOL=OFF
 
 //Path to a program.
@@ -34,8 +25,8 @@ CMAKE_AR:FILEPATH=/usr/bin/ar
 //No help, variable specified on the command line.
 CMAKE_BUILD_TYPE:STRING=Debug
 
-//No help, variable specified on the command line.
-CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/g++
+//CXX compiler
+CMAKE_CXX_COMPILER:STRING=/usr/bin/g++
 
 //A wrapper around 'ar' adding the appropriate '--plugin' option
 // for the GCC compiler
@@ -60,8 +51,8 @@ CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
 //Flags used by the CXX compiler during RELWITHDEBINFO builds.
 CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
 
-//No help, variable specified on the command line.
-CMAKE_C_COMPILER:FILEPATH=/usr/bin/gcc
+//C compiler
+CMAKE_C_COMPILER:STRING=/usr/bin/gcc
 
 //A wrapper around 'ar' adding the appropriate '--plugin' option
 // for the GCC compiler
@@ -223,60 +214,6 @@ CMAKE_TAPI:FILEPATH=CMAKE_TAPI-NOTFOUND
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
 //Value Computed by CMake
-M_BINARY_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv/build
-
-//Value Computed by CMake
-M_IS_TOP_LEVEL:STATIC=ON
-
-//Value Computed by CMake
-M_SOURCE_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv
-
-//Value Computed by CMake
-MovF_BINARY_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv/build
-
-//Value Computed by CMake
-MovF_IS_TOP_LEVEL:STATIC=ON
-
-//Value Computed by CMake
-MovF_SOURCE_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv
-
-//Value Computed by CMake
-MovFu_BINARY_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv/build
-
-//Value Computed by CMake
-MovFu_IS_TOP_LEVEL:STATIC=ON
-
-//Value Computed by CMake
-MovFu_SOURCE_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv
-
-//Value Computed by CMake
-MovFus_BINARY_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv/build
-
-//Value Computed by CMake
-MovFus_IS_TOP_LEVEL:STATIC=ON
-
-//Value Computed by CMake
-MovFus_SOURCE_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv
-
-//Value Computed by CMake
-MovFusca_BINARY_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv/build
-
-//Value Computed by CMake
-MovFusca_IS_TOP_LEVEL:STATIC=ON
-
-//Value Computed by CMake
-MovFusca_SOURCE_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv
-
-//Value Computed by CMake
-MovFuscato_BINARY_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv/build
-
-//Value Computed by CMake
-MovFuscato_IS_TOP_LEVEL:STATIC=ON
-
-//Value Computed by CMake
-MovFuscato_SOURCE_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv
-
-//Value Computed by CMake
 MovFuscator_BINARY_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv/build
 
 //Value Computed by CMake
@@ -284,15 +221,6 @@ MovFuscator_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
 MovFuscator_SOURCE_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv
-
-//Value Computed by CMake
-Mov_BINARY_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv/build
-
-//Value Computed by CMake
-Mov_IS_TOP_LEVEL:STATIC=ON
-
-//Value Computed by CMake
-Mov_SOURCE_DIR:STATIC=/home/david/Altele/Proiecte/cpp/AsmConv
 
 
 ########################

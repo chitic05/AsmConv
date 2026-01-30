@@ -416,8 +416,8 @@ namespace Instr{
         Operands::writeOperand(al, cat);
         Operands::writeOperand(ah, rest);
 
-        out << "mob $" << (int)cat << ", %al\n";
-        out << "mob $" << (int)rest << ", %ah\n";
+        out << "movb $" << (int)cat << ", %al\n";
+        out << "movb $" << (int)rest << ", %ah\n";
     }
 
     void mulb(std::string src, std::ofstream& out) {
