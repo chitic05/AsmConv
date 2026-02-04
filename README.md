@@ -93,4 +93,4 @@ movl $3, %ebx  # 1+2 deja calculat
 - Flaguri incomplete (doar E, L, G, LE, GE, Z, A, AE)
 - Funcții externe (`printf`, `fflush`) doar copiate, nu executate
 - Overflow/underflow negestionat
-
+- push/pop sunt executate pe o stivă virtuală în simulator, dar nu sunt simplificate în output — instrucțiunile sunt păstrate în aceeași formă ca în input
