@@ -32,14 +32,39 @@ Interpreter de cod Assembly x86 (AT&T) în C++ care simulează execuția instruc
 
 ## Utilizare
 
+**Executabilul este compilat pentru Linux și trebuie rulat pe un sistem Linux compatibil.**  
+Pe Windows/macOS este necesară recompilarea proiectului.
+
 ```bash
 cd out/release
 ./MovFuscator ex1.s ex2.s ex3.s
 ```
 
 sau toate testele:
+
 ```bash
 ./MovFuscator ex{1..17}.s
+```
+
+**Output:** Fișiere în `asmOut/`
+
+---
+
+## Compilare din sursă
+
+Necesită: **CMake + g++/clang++**
+
+```bash
+git clone <repo>
+cd MovFuscator
+cmake -B build -S .
+cmake --build build --config Release
+```
+
+Executabilul va fi generat în:
+
+```
+build/MovFuscator
 ```
 
 **Output:** Fișiere în `asmOut/`
