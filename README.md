@@ -55,7 +55,7 @@ sau toate testele:
 Necesită: **CMake + g++/clang++**
 
 ```bash
-git clone <repo>
+git clone https://github.com/chitic05/MovFuscator.git
 cd MovFuscator
 cmake -B build -S .
 cmake --build build --config Release
